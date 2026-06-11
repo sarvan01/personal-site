@@ -78,7 +78,9 @@ def run_backtest(
     # One-bar execution lag: today's target trades at tomorrow's close.
     weights = weights.shift(1).fillna(0.0)
 
-    rets = closes.pct_change().fillna(0.0)
+    # Explicit shift-divide instead of pct_change: identical math, avoids the
+    # pandas 2.x fill_method FutureWarning on universes with later listings.
+    rets = (closes / closes.shift(1) - 1.0).fillna(0.0)
     cost_per_side = cfg.costs.cost_per_side
 
     breaker = CircuitBreaker(cfg.risk)

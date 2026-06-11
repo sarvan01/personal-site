@@ -47,9 +47,9 @@ PLAN_ITEMS = [
     ("Paper-trading ledger + cost reconciliation", "done"),
     ("Real-data backtest: H1 verdict recorded (FAIL as registered)", "done"),
     ("Carry hypothesis H3: PASS on real funding (+7.3%/yr net)", "done"),
-    ("H1b confirmation backtest (--config h1b: 5 majors, 50/100)", "pending"),
+    ("H1b confirmation backtest: GATE PASS (Sharpe 1.26/1.10, maxDD -14.6%)", "done"),
     ("Railgun study on real privacy-basket data (H2)", "pending"),
-    ("4 clean weeks of paper trading", "pending"),
+    ("4 clean weeks of paper trading (--config h1b daily)", "pending"),
     ("Go/no-go memo for live capital", "pending"),
     ("Execution layer (only after validation passes)", "gated"),
 ]
