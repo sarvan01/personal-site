@@ -40,6 +40,15 @@ Retire a strategy if **either**:
 - Scale-up path: 10% of target size for 3 months, then 50%, then 100% — each
   step requires the reconciliation report to stay within bounds.
 
+## Amendments
+
+- **2026-06-12 (H1b):** Per-trade risk raised 0.5% → **1.0%** for the H1b
+  configuration only. Reason: on real data the 0.5% cap against a 3×ATR stop
+  bound ~5× below the vol target, leaving average gross exposure at 2.5% and
+  capital idle; the vol target should be the primary sizing constraint. This
+  was decided *after* seeing H1 results and is therefore logged as post-hoc
+  (see `research/hypothesis_log.json`, H1/H1b). All other limits unchanged.
+
 ## Venue risk
 
 - Binance for crypto execution; IBKR holds non-deployed capital in T-bill

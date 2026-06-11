@@ -90,3 +90,20 @@ class SystemConfig:
 
 
 DEFAULT = SystemConfig()
+
+# --- H1b (POST-HOC, registered 2026-06-12 after H1 failed as registered) ---
+# H1 result on real data 2017-2025: Sharpe 1.12 / 1.03 / 0.597 for lookbacks
+# 50/100/200 — the gate failed only on the 200-day leg. H1b drops the slow
+# lookback, expands the universe to more liquid majors as fresh evidence, and
+# reconciles sizing so the vol target (not the per-trade risk cap) is the
+# primary constraint. BECAUSE THIS IS POST-HOC, its confirmation bar is
+# stricter: gate pass on the expanded universe, 4 clean paper weeks, and any
+# live deployment starts at 10% of target size.
+# See research/hypothesis_log.json (H1, H1b) and RISK_POLICY.md amendments.
+H1B = SystemConfig(
+    universe=("BTCUSDT", "ETHUSDT", "BNBUSDT", "XRPUSDT", "SOLUSDT"),
+    risk=RiskConfig(per_trade_risk=0.01),
+    trend=TrendConfig(lookbacks=(50, 100)),
+)
+
+CONFIGS = {"default": DEFAULT, "h1b": H1B}

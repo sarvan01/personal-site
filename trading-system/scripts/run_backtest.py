@@ -19,14 +19,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import pandas as pd
 
 from trading_system.backtest import run_grid, walk_forward
-from trading_system.config import DEFAULT
+from trading_system.config import CONFIGS
 from trading_system.data import DataError, load_klines, synthetic_klines
 
 PASS_MIN_SHARPE = 0.7
 PASS_MAX_DD = -0.35
 
 
-def load_universe(synthetic: bool) -> dict[str, pd.DataFrame]:
+def load_universe(synthetic: bool, cfg) -> dict[str, pd.DataFrame]:
     if synthetic:
         print("== SYNTHETIC DATA (pipeline demo, not a real backtest) ==\n")
         return {
@@ -34,7 +34,7 @@ def load_universe(synthetic: bool) -> dict[str, pd.DataFrame]:
             "ETHUSDT": synthetic_klines(seed=13),
         }
     try:
-        return {sym: load_klines(sym) for sym in DEFAULT.universe}
+        return {sym: load_klines(sym) for sym in cfg.universe}
     except DataError as exc:
         print(f"error: {exc}", file=sys.stderr)
         print("hint: run scripts/fetch_data.py, or use --synthetic", file=sys.stderr)
@@ -44,10 +44,13 @@ def load_universe(synthetic: bool) -> dict[str, pd.DataFrame]:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--synthetic", action="store_true")
+    parser.add_argument("--config", choices=sorted(CONFIGS), default="default")
     args = parser.parse_args()
 
-    ohlc = load_universe(args.synthetic)
-    cfg = DEFAULT
+    cfg = CONFIGS[args.config]
+    universe = ", ".join(cfg.universe)
+    print(f"config: {args.config} | universe: {universe} | lookbacks: {cfg.trend.lookbacks}\n")
+    ohlc = load_universe(args.synthetic, cfg)
 
     print("Lookback grid (net of costs):")
     grid = run_grid(ohlc, cfg)

@@ -23,7 +23,7 @@ import pandas as pd
 from trading_system.backtest import run_grid, walk_forward
 from trading_system.carry import current_status
 from trading_system.cockpit import build_cockpit
-from trading_system.config import DEFAULT
+from trading_system.config import CONFIGS
 from trading_system.data import (
     DataError,
     load_funding,
@@ -45,15 +45,15 @@ PASS_MAX_DD = -0.35
 EVENTS_CSV = ROOT / "research" / "privacy_events.csv"
 
 
-def load_inputs(synthetic: bool):
+def load_inputs(synthetic: bool, cfg):
     if synthetic:
         ohlc = {"BTCUSDT": synthetic_klines(seed=7), "ETHUSDT": synthetic_klines(seed=13)}
         funding = synthetic_funding()
         dxy, ry, stables = synthetic_macro()
         basket, bench, events = synthetic_study_data(effect=0.0)
         return ohlc, funding, (dxy, ry, stables), (basket, bench, events)
-    ohlc = {sym: load_klines(sym) for sym in DEFAULT.universe}
-    funding = load_funding(DEFAULT.benchmark)
+    ohlc = {sym: load_klines(sym) for sym in cfg.universe}
+    funding = load_funding(cfg.benchmark)
     macro = (None, None, None)  # fetch via trading_system.macro when online
     study = None  # needs privacy-basket price CSVs in data/ + events CSV
     priv_files = sorted((ROOT / "data").glob("PRIV_*_1d.csv"))
@@ -65,13 +65,14 @@ def load_inputs(synthetic: bool):
             cols[f.stem] = pdf["close"]
         basket = pd.DataFrame(cols)
         events = pd.read_csv(EVENTS_CSV)["date"].tolist()
-        study = (basket, ohlc[DEFAULT.benchmark]["close"], events)
+        study = (basket, ohlc[cfg.benchmark]["close"], events)
     return ohlc, funding, macro, study
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--synthetic", action="store_true")
+    parser.add_argument("--config", choices=sorted(CONFIGS), default="default")
     parser.add_argument("--lookback", type=int, default=100)
     parser.add_argument("--perms", type=int, default=2000)
     parser.add_argument(
@@ -82,10 +83,10 @@ def main() -> int:
         "account using each day's own signals (default 60)",
     )
     args = parser.parse_args()
-    cfg = DEFAULT
+    cfg = CONFIGS[args.config]
 
     try:
-        ohlc, funding, macro, study = load_inputs(args.synthetic)
+        ohlc, funding, macro, study = load_inputs(args.synthetic, cfg)
     except (DataError, FileNotFoundError) as exc:
         print(f"error: {exc}\nhint: run scripts/fetch_data.py, or use --synthetic", file=sys.stderr)
         return 2

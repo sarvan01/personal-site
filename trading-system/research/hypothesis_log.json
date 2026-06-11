@@ -3,8 +3,15 @@
     "id": "H1",
     "claim": "Donchian trend-following on BTC/ETH is profitable net of 25bps/side across the 50/100/200 lookback grid (Sharpe>0.7, maxDD<35%)",
     "test": "scripts/run_backtest.py on real Binance data 2017-present, walk-forward",
-    "result": "PENDING - requires real data (run fetch_data.py locally)",
-    "decision": "no capital until gate passes"
+    "result": "FAIL as registered (2026-06-12, 3220 days). Sharpe by lookback: 50d=1.12, 100d=1.03, 200d=0.597 — gate failed only on the 200d leg. All returns positive (27%/25%/13% total), maxDD < 6%. Walk-forward: 3 of 4 two-year windows strongly positive (Sharpe 1.2-2.1); only 2021-23 negative (-1.6%, the bear/chop). Avg gross exposure 2.5% — the 0.5% per-trade risk cap against a 3xATR stop binds ~5x below the vol target, leaving capital idle.",
+    "decision": "Retired as registered. No live capital under H1. Superseded by the explicitly post-hoc H1b with a stricter confirmation bar."
+  },
+  {
+    "id": "H1b",
+    "claim": "POST-HOC (formed after seeing H1 results - confirmation bar is stricter for that reason): 50/100-day trend on an expanded liquid-major universe (BTC, ETH, BNB, XRP, SOL) passes the same gate, with sizing reconciled (per-trade risk 1.0%) so the vol target governs",
+    "test": "scripts/run_backtest.py --config h1b (expanded universe is partial fresh evidence: BNB/XRP/SOL were not used to form the hypothesis). Then 4 clean paper weeks (scripts/cockpit.py --config h1b daily). Any live deployment starts at 10% of target size. Known caveat: universe chosen today = survivorship risk; mitigated by using only majors that passed liquidity screens for most of the sample.",
+    "result": "PENDING - run fetch_data.py --config h1b then run_backtest.py --config h1b",
+    "decision": "no capital until the H1b gate passes AND paper weeks are clean"
   },
   {
     "id": "H2",
@@ -17,7 +24,7 @@
     "id": "H3",
     "claim": "Funding carry above a 10% annualized hurdle is collectable net of 4-side costs",
     "test": "carry.backtest_carry on real funding history",
-    "result": "PENDING - requires real funding data",
-    "decision": "sleeve capped at 30% of account, 3x maintenance margin buffer"
+    "result": "PASS (2026-06-12, BTCUSDT funding 2020-present): +7.3%/yr net on sleeve capital (10.1% gross), 45.6% time in market (~16%/yr while deployed), 18 round trips. Costs modeled at the pessimistic 25bps/side x 4 sides.",
+    "decision": "Proceed to paper trading. Sleeve cap 30% of account, >=3x maintenance margin buffer. Currently OUT (funding below hurdle) - correct behavior, it waits."
   }
 ]

@@ -15,16 +15,17 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from trading_system.config import DEFAULT
+from trading_system.config import CONFIGS
 from trading_system.data import fetch_daily_klines, fetch_funding, save_csv
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--start", default="2017-01-01")
+    parser.add_argument("--config", choices=sorted(CONFIGS), default="default")
     args = parser.parse_args()
 
-    for symbol in DEFAULT.universe:
+    for symbol in CONFIGS[args.config].universe:
         print(f"fetching {symbol} daily klines from {args.start} ...")
         klines = fetch_daily_klines(symbol, args.start)
         path = save_csv(klines, symbol, "1d")

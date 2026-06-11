@@ -18,7 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import pandas as pd
 
 from trading_system.carry import current_status
-from trading_system.config import DEFAULT
+from trading_system.config import CONFIGS
 from trading_system.data import (
     DataError,
     load_funding,
@@ -37,8 +37,9 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--synthetic", action="store_true")
     parser.add_argument("--lookback", type=int, default=100)
+    parser.add_argument("--config", choices=sorted(CONFIGS), default="default")
     args = parser.parse_args()
-    cfg = DEFAULT
+    cfg = CONFIGS[args.config]
 
     if args.synthetic:
         ohlc = {"BTCUSDT": synthetic_klines(seed=7), "ETHUSDT": synthetic_klines(seed=13)}
