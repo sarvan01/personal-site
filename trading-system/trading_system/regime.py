@@ -24,12 +24,15 @@ def classify(
     benchmark_close: pd.Series,
     cfg: RegimeConfig,
     breadth: pd.Series | None = None,
+    macro_risk_off: pd.Series | None = None,
 ) -> pd.DataFrame:
     """Return a DataFrame with columns: regime (str), multiplier (float).
 
     Trend axis: benchmark above its long SMA and positive trailing return
     (optionally confirmed by breadth > 0.5).
-    Stress axis: 30-day realized vol in its top decile of the trailing year.
+    Stress axis: 30-day realized vol in its top decile of the trailing year,
+    optionally OR'd with the macro risk-off composite (DXY / real yields /
+    stablecoin flows; see macro.macro_risk_off).
     """
     above_sma = benchmark_close > sma(benchmark_close, cfg.sma_long)
     pos_ret = pct_return(benchmark_close, cfg.return_lookback) > 0
@@ -40,6 +43,9 @@ def classify(
     vol = realized_vol(benchmark_close, cfg.vol_window)
     vol_rank = rolling_percentile_rank(vol, cfg.vol_rank_window)
     stressed = vol_rank >= cfg.vol_extreme_pct
+    if macro_risk_off is not None:
+        flag = macro_risk_off.reindex(benchmark_close.index).ffill().fillna(False)
+        stressed = stressed | flag.astype(bool)
 
     regime = pd.Series(Regime.CHOP.value, index=benchmark_close.index)
     regime[trend & ~stressed] = Regime.RISK_ON_TRENDING.value
