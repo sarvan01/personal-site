@@ -21,6 +21,7 @@ from trading_system.carry import current_status
 from trading_system.config import DEFAULT
 from trading_system.data import (
     DataError,
+    load_funding,
     load_klines,
     synthetic_funding,
     synthetic_klines,
@@ -45,8 +46,7 @@ def main() -> int:
     else:
         try:
             ohlc = {sym: load_klines(sym) for sym in cfg.universe}
-            funding_path = Path(__file__).resolve().parent.parent / "data" / f"{cfg.benchmark}_funding.csv"
-            funding = pd.read_csv(funding_path, index_col=0, parse_dates=True).iloc[:, 0]
+            funding = load_funding(cfg.benchmark)
         except (DataError, FileNotFoundError) as exc:
             print(f"error: {exc}\nhint: run scripts/fetch_data.py, or use --synthetic", file=sys.stderr)
             return 2

@@ -26,10 +26,12 @@ from trading_system.cockpit import build_cockpit
 from trading_system.config import DEFAULT
 from trading_system.data import (
     DataError,
+    load_funding,
     load_klines,
     synthetic_funding,
     synthetic_klines,
 )
+from trading_system.data import _utc_index
 from trading_system.event_study import run_event_study, synthetic_study_data
 from trading_system.indicators import realized_vol
 from trading_system.macro import macro_risk_off, synthetic_macro
@@ -51,18 +53,17 @@ def load_inputs(synthetic: bool):
         basket, bench, events = synthetic_study_data(effect=0.0)
         return ohlc, funding, (dxy, ry, stables), (basket, bench, events)
     ohlc = {sym: load_klines(sym) for sym in DEFAULT.universe}
-    funding_path = ROOT / "data" / f"{DEFAULT.benchmark}_funding.csv"
-    funding = pd.read_csv(funding_path, index_col=0, parse_dates=True).iloc[:, 0]
+    funding = load_funding(DEFAULT.benchmark)
     macro = (None, None, None)  # fetch via trading_system.macro when online
     study = None  # needs privacy-basket price CSVs in data/ + events CSV
     priv_files = sorted((ROOT / "data").glob("PRIV_*_1d.csv"))
     if priv_files and EVENTS_CSV.exists():
-        basket = pd.DataFrame(
-            {
-                f.stem: pd.read_csv(f, index_col=0, parse_dates=True)["close"]
-                for f in priv_files
-            }
-        )
+        cols = {}
+        for f in priv_files:
+            pdf = pd.read_csv(f, index_col=0)
+            pdf.index = _utc_index(pdf.index)
+            cols[f.stem] = pdf["close"]
+        basket = pd.DataFrame(cols)
         events = pd.read_csv(EVENTS_CSV)["date"].tolist()
         study = (basket, ohlc[DEFAULT.benchmark]["close"], events)
     return ohlc, funding, macro, study

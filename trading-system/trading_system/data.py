@@ -113,14 +113,35 @@ def save_csv(df: pd.DataFrame | pd.Series, symbol: str, kind: str) -> Path:
     return path
 
 
+def _utc_index(values) -> pd.DatetimeIndex:
+    """Parse an index of ISO date strings to tz-aware UTC datetimes.
+
+    Newer pandas does not auto-parse tz-aware strings via parse_dates=True,
+    so cached CSVs must be parsed explicitly on load."""
+    return pd.DatetimeIndex(pd.to_datetime(values, utc=True, format="ISO8601"))
+
+
 def load_klines(symbol: str) -> pd.DataFrame:
     path = cache_path(symbol, "1d")
     if not path.exists():
         raise DataError(
             f"no cached data for {symbol}; run scripts/fetch_data.py first"
         )
-    df = pd.read_csv(path, index_col=0, parse_dates=True)
+    df = pd.read_csv(path, index_col=0)
+    df.index = _utc_index(df.index)
     return df.astype(float)
+
+
+def load_funding(symbol: str) -> pd.Series:
+    path = cache_path(symbol, "funding")
+    if not path.exists():
+        raise DataError(
+            f"no cached funding for {symbol}; run scripts/fetch_data.py first"
+        )
+    df = pd.read_csv(path, index_col=0)
+    return pd.Series(
+        df.iloc[:, 0].astype(float).values, index=_utc_index(df.index), name=symbol
+    )
 
 
 def synthetic_klines(
