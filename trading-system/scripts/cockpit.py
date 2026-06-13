@@ -195,6 +195,7 @@ def main() -> int:
         "paper": account.summary(),
         "backtest_gate": "PASS" if gate else "FAIL",
         "data_mode": "synthetic" if args.synthetic else "real",
+        "event_study": event_study,
     }
     (ROOT / "out" / "status.json").write_text(json.dumps(status, indent=2, default=str))
 
@@ -216,6 +217,13 @@ def main() -> int:
     print(f"status   -> {ROOT / 'out' / 'status.json'}")
     print(f"memo     -> {ROOT / 'out' / 'decision_memo.md'}")
     print(f"backtest gate: {'PASS' if gate else 'FAIL'} | regime: {regime['state']} | carry: {carry['signal']}")
+    if event_study is not None:
+        w = event_study["windows"].get("[0,5]", {})
+        print(f"railgun event study [0,5]: mean CAR {w.get('mean_car', float('nan')):+.2%} "
+              f"p={w.get('p_value', float('nan')):.3f} n={w.get('n_events', 0)}")
+        print(f"  verdict: {event_study['verdict']}")
+    else:
+        print("railgun event study: not run (need data/PRIV_*_1d.csv + research/privacy_events.csv)")
     return 0
 
 

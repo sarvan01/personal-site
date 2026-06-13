@@ -43,10 +43,12 @@ def beta_adjusted_abnormal(
     """Daily abnormal return of the equal-weight basket vs. its rolling beta
     to the benchmark: abn_i = r_i - beta_i * r_bench, averaged across assets.
     """
-    bench_ret = bench_close.pct_change()
+    # shift-divide instead of pct_change: identical values, no pandas 2.x
+    # fill_method FutureWarning on series with internal gaps.
+    bench_ret = bench_close / bench_close.shift(1) - 1.0
     abns = {}
     for col in basket_closes.columns:
-        r = basket_closes[col].pct_change()
+        r = basket_closes[col] / basket_closes[col].shift(1) - 1.0
         cov = r.rolling(beta_window, min_periods=beta_window).cov(bench_ret)
         var = bench_ret.rolling(beta_window, min_periods=beta_window).var()
         beta = (cov / var).shift(1)  # yesterday's beta: no lookahead
