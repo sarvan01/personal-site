@@ -12,6 +12,7 @@ VIX is forward-filled to a daily calendar so it aligns with crypto's
 """
 
 import sys
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -23,10 +24,19 @@ from trading_system.macro import VIX_SERIES, MacroError, fetch_fred
 
 
 def main() -> int:
-    try:
-        vix = fetch_fred(VIX_SERIES)
-    except MacroError as exc:
-        print(f"error: {exc}", file=sys.stderr)
+    vix = None
+    for attempt in range(4):
+        try:
+            vix = fetch_fred(VIX_SERIES)
+            break
+        except MacroError as exc:
+            wait = 2 ** attempt
+            print(f"FRED attempt {attempt + 1} failed ({exc}); retrying in {wait}s ...",
+                  file=sys.stderr)
+            time.sleep(wait)
+    if vix is None:
+        print("error: FRED unreachable after retries. It's usually transient — "
+              "re-run scripts/fetch_vix.py in a minute.", file=sys.stderr)
         return 2
     # Reindex to a daily calendar and forward-fill weekends/holidays.
     daily = vix.reindex(

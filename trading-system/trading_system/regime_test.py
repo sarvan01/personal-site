@@ -64,12 +64,13 @@ def crypto_stress_regime(
     hi_vol = rvol > rvol.rolling(365, min_periods=180).quantile(0.80)
     roll_high = btc_close.rolling(dd_window, min_periods=dd_window).max()
     deep_dd = (btc_close / roll_high - 1.0) < -0.20
-    return (hi_vol | deep_dd).shift(1).fillna(False).astype(bool)
+    # shift with fill_value keeps a clean bool dtype (no fillna downcast).
+    return (hi_vol | deep_dd).shift(1, fill_value=False).astype(bool)
 
 
 def vix_risk_off_regime(vix: pd.Series, threshold: float = 25.0) -> pd.Series:
     """U1 mask: VIX above threshold on the prior day's close."""
-    return (vix > threshold).shift(1).fillna(False).astype(bool)
+    return (vix > threshold).shift(1, fill_value=False).astype(bool)
 
 
 def _permutation_diff_p(
