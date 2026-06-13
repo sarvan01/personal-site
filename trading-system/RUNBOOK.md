@@ -5,9 +5,17 @@ which is hard-gated.
 
 ## Phase 0 — One-time setup
 
+**Easiest: double-click `setup.bat`** — it fetches the majors and the privacy
+basket, builds the cockpit, and opens it. (It does not touch an existing paper
+ledger.)
+
+Or by hand:
+
 ```powershell
 cd "<your path>\Trading-system-package\trading-system"
 del out\paper_ledger.json          # reset the ledger once, under the h1b config
+python scripts/fetch_data.py --config h1b
+python scripts/fetch_privacy.py    # optional: enables the Railgun study
 python scripts/cockpit.py --config h1b   # seeds 60 days, writes out/cockpit.html
 start out\cockpit.html             # confirm REAL DATA badge + equity curve
 ```

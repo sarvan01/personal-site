@@ -6,6 +6,34 @@
 
 ---
 
+## Living Status & Results Log
+
+> **This section is the living part of the document — append-only, updated as the system evolves.** Everything below it (Sections 1–8) is the **pre-registered record**: it was written _before_ any code ran or any backtest was seen, including the gate criteria (Sharpe > 0.7) and the Railgun probability estimates (~10 / 55 / 35%). It is deliberately left **unedited** so results cannot be retrofitted to the reasoning. New findings are recorded here, not back-edited into the analysis. The runnable system lives in [`../trading-system/`](../trading-system/) — see `trading-system/RUNBOOK.md` to operate it.
+
+### Results log
+
+| Date       | Hypothesis                                              | Verdict                                                                                                                      |
+| ---------- | ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| 2026-06-12 | **H1** — trend, as registered (BTC/ETH, 50/100/200)     | **FAIL as registered.** Sharpe 1.12 / 1.03 / 0.597 — failed only on the 200-day leg. Avg gross exposure 2.5% (sizing too timid). |
+| 2026-06-12 | **H1b** — trend, post-hoc (5 majors, 50/100, 1% risk)   | **GATE PASS.** Sharpe 1.26 / 1.10; CAGR ~11% / 9.5%; vol 8.6%; maxDD −14.6%. Still requires 4 clean paper weeks before capital. |
+| 2026-06-12 | **H3** — funding-rate carry (delta-neutral)             | **PASS.** +7.3%/yr net on sleeve capital since 2020 (10.1% gross), deployed 46% of the time, 18 round trips, costs at 25 bps/side. |
+| 2026-06-13 | **H2** — Railgun / privacy outperforms in uncertainty   | **Tooling complete, awaiting run.** `scripts/fetch_privacy.py` → `cockpit.py` runs the beta-adjusted event study. Prior unchanged: ~55% artifact. |
+
+Because H1b was formed _after_ seeing H1's results, it carries a stricter confirmation bar (expanded universe as partial fresh evidence, 4 clean paper weeks, live at 10% size). See `trading-system/research/hypothesis_log.json` for the full audit trail.
+
+### Build changelog
+
+- **2026-06-10** — 30-day MVP (Section 8) built: data pipeline, risk engine, regime engine, two sleeves (trend + carry), backtest harness with the pre-registered grid gate and walk-forward. 31 tests.
+- **2026-06-11** — Single-page cockpit dashboard; Railgun event-study engine (beta-adjusted CARs, permutation test, drop-one robustness); paper-trading ledger with cost reconciliation; optional macro regime inputs; `RISK_POLICY.md` and the hypothesis log.
+- **2026-06-12** — Real-data results recorded (H1/H1b/H3 above); `--config` flag; H1b registered as a separate, auditable config.
+- **2026-06-13** — Execution layer (`execute.py`: dry / testnet / live, hard-gated, all orders risk-checked); shared sizing (`signals.py`) so dashboard and executor agree; daily automation (`daily.bat`/`.sh`), Windows scheduler, one-time `setup.bat`; privacy-coin fetcher for H2; `RUNBOOK.md`. 57 tests.
+
+### Current phase
+
+The 30-day MVP is executed and the system is in the **paper-trading phase** (Section 8, weeks 3–4 → the 90-day plan). No live capital deployed. Next gate: 4 clean paper weeks → `out/decision_memo.md` flips to GO → testnet → live at 10% size.
+
+---
+
 ## 1. Is the Original Idea Actually Good?
 
 ### What is strong about it
