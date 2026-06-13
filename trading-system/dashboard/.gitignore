@@ -1,0 +1,6 @@
+node_modules/
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+# public/status.json is overwritten by `npm run sync`; a sample is committed.

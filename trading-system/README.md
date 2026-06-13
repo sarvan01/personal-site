@@ -43,6 +43,11 @@ verdict, cost reconciliation, the hypothesis log, and a live 30-day-plan
 progress checklist. It also writes `out/status.json` (machine-readable) and
 `out/decision_memo.md` (the go/no-go memo).
 
+`out/cockpit.html` is a premium, self-contained dashboard (KPI tiles, SVG
+arc-gauges, equity area chart, signal cards) — just double-click it, no Node
+or server required. For a live component-based UI, an optional Next.js app in
+`dashboard/` reads the same `status.json` (see `dashboard/README.md`).
+
 ```bash
 cd trading-system
 pip install -r requirements.txt

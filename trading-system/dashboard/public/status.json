@@ -1,0 +1,165 @@
+{
+  "regime": {
+    "state": "risk_on_trending",
+    "exposure_multiplier": 1.0,
+    "macro_composite": "unavailable (offline)",
+    "as_of": "2026-06-12"
+  },
+  "signals": {
+    "BTCUSDT": {
+      "signal": true,
+      "close": 1109.2412974840322,
+      "target_weight": 0.10506638603806456
+    },
+    "ETHUSDT": {
+      "signal": false,
+      "close": 33503.50444214172,
+      "target_weight": 0.0
+    },
+    "BNBUSDT": {
+      "signal": true,
+      "close": 60378.07914259714,
+      "target_weight": 0.08899084888032983
+    },
+    "XRPUSDT": {
+      "signal": false,
+      "close": 14857.338982839372,
+      "target_weight": 0.0
+    },
+    "SOLUSDT": {
+      "signal": true,
+      "close": 16985.36437473135,
+      "target_weight": 0.158636105037674
+    }
+  },
+  "carry": {
+    "trailing_7d_funding_annualized": 0.1804064439590155,
+    "signal": "IN",
+    "enter_hurdle": 0.1,
+    "exit_hurdle": 0.05,
+    "max_sleeve_weight": 0.3
+  },
+  "risk": {
+    "per_trade_risk": 0.01,
+    "max_asset_weight": 0.25,
+    "max_gross": 1.0,
+    "target_vol": 0.12,
+    "circuit_breakers": "-10% half / -15% flat"
+  },
+  "paper": {
+    "equity": 100764.28,
+    "peak_equity": 100477.07,
+    "drawdown": 0.0029,
+    "open_weights": {
+      "BTCUSDT": 0.10506638603806456,
+      "BNBUSDT": 0.08899084888032983,
+      "SOLUSDT": 0.158636105037674
+    },
+    "days_recorded": 60,
+    "breaker_cooldown_left": 0
+  },
+  "backtest_gate": "FAIL",
+  "data_mode": "real",
+  "stale_data_warnings": [],
+  "equity_history": [
+    99988.4,
+    99948.95,
+    100295.66,
+    100385.59,
+    100081.14,
+    100162.85,
+    100243.51,
+    100216.54,
+    100160.27,
+    100273.34,
+    100395.42,
+    100477.07,
+    100303.3,
+    100263.91,
+    100002.78,
+    99757.5,
+    99674.66,
+    99512.72,
+    99452.96,
+    99828.71,
+    99904.89,
+    99770.1,
+    99462.77,
+    99462.77,
+    99462.77,
+    99462.77,
+    99462.77,
+    99462.77,
+    99462.77,
+    99462.77,
+    99462.77,
+    99462.77,
+    99462.77,
+    99462.77,
+    99462.77,
+    99462.77,
+    99462.77,
+    99462.77,
+    99462.77,
+    99435.0,
+    99111.8,
+    99102.13,
+    99309.74,
+    99628.3,
+    99496.27,
+    99647.82,
+    99575.17,
+    99655.41,
+    99637.08,
+    99230.56,
+    99252.81,
+    99567.21,
+    99334.08,
+    99662.22,
+    100096.57,
+    99822.14,
+    99833.15,
+    99630.87,
+    100105.61,
+    100764.28
+  ],
+  "backtest": {
+    "pass": false,
+    "grid": [
+      {
+        "lookback": 50,
+        "total_return": 0.085,
+        "cagr": 0.034,
+        "ann_vol": 0.048,
+        "sharpe": 0.72,
+        "max_drawdown": -0.069,
+        "avg_gross_exposure": 0.1,
+        "ann_turnover": 4.742,
+        "days": 900
+      },
+      {
+        "lookback": 100,
+        "total_return": -0.015,
+        "cagr": -0.006,
+        "ann_vol": 0.047,
+        "sharpe": -0.105,
+        "max_drawdown": -0.122,
+        "avg_gross_exposure": 0.107,
+        "ann_turnover": 4.532,
+        "days": 900
+      }
+    ],
+    "walk_forward": [
+      {
+        "from": "2023-12-26",
+        "to": "2025-12-24",
+        "total_return": -0.009,
+        "sharpe": -0.064,
+        "max_drawdown": -0.106
+      }
+    ]
+  },
+  "event_study": null,
+  "regime_tests": null,
+  "generated_utc": "2026-06-13 23:54 UTC"
+}

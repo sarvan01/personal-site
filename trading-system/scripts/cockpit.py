@@ -13,6 +13,7 @@ Intended as the one daily command (cron candidate). No live orders.
 import argparse
 import json
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -235,8 +236,11 @@ def main() -> int:
         "backtest_gate": "PASS" if gate else "FAIL",
         "data_mode": "synthetic" if args.synthetic else "real",
         "stale_data_warnings": data_warnings,
+        "equity_history": equity_history,
+        "backtest": backtest,
         "event_study": event_study,
         "regime_tests": regime_tests,
+        "generated_utc": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
     }
     (ROOT / "out" / "status.json").write_text(json.dumps(status, indent=2, default=str))
 

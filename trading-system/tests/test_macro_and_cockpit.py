@@ -42,7 +42,7 @@ def test_cockpit_renders_all_sections(tmp_path):
     html = path.read_text()
     for needle in (
         "Cockpit", "Regime", "trend signals", "funding carry", "Risk limits",
-        "Paper account", "Equity curve", "FAIL", "event study", "Hypothesis log",
-        "plan progress", "No live orders",
+        "Paper equity", "Equity curve", "FAIL", "event study", "Hypothesis log",
+        "Plan progress", "No live orders", "Gauges", "At a glance",
     ):
         assert needle in html, f"missing section: {needle}"

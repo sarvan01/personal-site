@@ -1,0 +1,24 @@
+{
+  "name": "trading-cockpit-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Premium Next.js dashboard for the two-sleeve trading system. Reads ../out/status.json (produced by scripts/cockpit.py). Standalone — NOT part of the portfolio site.",
+  "scripts": {
+    "sync": "node scripts/sync-status.mjs",
+    "dev": "npm run sync && next dev -p 4317",
+    "build": "npm run sync && next build",
+    "start": "next start -p 4317"
+  },
+  "dependencies": {
+    "next": "^16.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "recharts": "^3.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "typescript": "^5"
+  }
+}
