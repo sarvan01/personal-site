@@ -51,7 +51,8 @@ PLAN_ITEMS = [
     ("Railgun study on real privacy-basket data (H2)", "pending"),
     ("4 clean weeks of paper trading (--config h1b daily)", "pending"),
     ("Go/no-go memo for live capital", "pending"),
-    ("Execution layer (only after validation passes)", "gated"),
+    ("Execution layer built (dry/testnet/live, risk-checked)", "done"),
+    ("Testnet validation, then live at 10% size (after GO)", "gated"),
 ]
 
 

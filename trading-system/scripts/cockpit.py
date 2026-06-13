@@ -38,6 +38,7 @@ from trading_system.macro import macro_risk_off, synthetic_macro
 from trading_system.paper import PaperAccount
 from trading_system.regime import classify
 from trading_system.risk import asset_weight
+from trading_system.signals import latest_targets
 from trading_system.strategy import stop_distance, trend_signal
 
 PASS_MIN_SHARPE = 0.7
@@ -102,15 +103,12 @@ def main() -> int:
         "as_of": str(regime_df.index[-1].date()),
     }
 
-    # --- sleeve A signals ----------------------------------------------------
-    signals = {}
-    for sym, df in ohlc.items():
-        sig = float(trend_signal(df["close"], args.lookback, cfg.trend.exit_divisor).iloc[-1])
-        stop = float(stop_distance(df["high"], df["low"], df["close"], cfg.trend).iloc[-1])
-        vol = float(realized_vol(df["close"], cfg.regime.vol_window).iloc[-1])
-        price = float(df["close"].iloc[-1])
-        w = asset_weight(sig, vol, price, stop, cfg.risk) * regime["exposure_multiplier"]
-        signals[sym] = {"signal": bool(sig), "close": price, "target_weight": w}
+    # --- sleeve A signals (shared with the executor via latest_targets) ------
+    targets_full, _ = latest_targets(ohlc, cfg, args.lookback, macro_risk_off=risk_off)
+    signals = {
+        s: {"signal": v["signal"], "close": v["close"], "target_weight": v["target_weight"]}
+        for s, v in targets_full.items()
+    }
 
     # --- sleeve B ------------------------------------------------------------
     carry = current_status(funding, cfg.carry)

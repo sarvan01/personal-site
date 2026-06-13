@@ -61,6 +61,22 @@ python scripts/cockpit.py                    # daily cron candidate
 `scripts/run_backtest.py` and `scripts/daily_signals.py` remain available for
 running those pieces individually.
 
+## Daily operation & going live
+
+See **`RUNBOOK.md`** for the full step-by-step. In short:
+
+- **`daily.bat`** (Windows) / **`daily.sh`** (mac/Linux) — one click runs the
+  daily fetch + cockpit update.
+- **`scripts/schedule_daily.ps1`** — registers a Windows Scheduled Task so the
+  daily run is automatic.
+- **`scripts/execute.py`** — the execution layer. SAFE BY DEFAULT (dry-run,
+  no network, no orders). `--venue testnet` trades Binance Spot Testnet with
+  play money; `--venue live` is hard-gated behind both the
+  `ALLOW_LIVE_TRADING=yes` env var and a `--i-understand-live` flag. Every
+  order passes the same risk checks (per-asset cap, gross cap, circuit-breaker
+  scale) the backtest and paper account use. Run it only after the
+  paper-trading phase produces a GO in `out/decision_memo.md`.
+
 For the Railgun study on real data: place daily close CSVs for the privacy
 basket in `data/` named `PRIV_<symbol>_1d.csv` (XMR, ZEC, SCRT, RAIL, DASH —
 CoinGecko exports work), review/extend `research/privacy_events.csv` first,
