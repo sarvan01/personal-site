@@ -48,7 +48,8 @@ PLAN_ITEMS = [
     ("Real-data backtest: H1 verdict recorded (FAIL as registered)", "done"),
     ("Carry hypothesis H3: PASS on real funding (+7.3%/yr net)", "done"),
     ("H1b confirmation backtest: GATE PASS (Sharpe 1.26/1.10, maxDD -14.6%)", "done"),
-    ("Railgun study on real privacy-basket data (H2)", "pending"),
+    ("Railgun event study U3 (H2): REJECTED, p=0.76, no effect", "done"),
+    ("Railgun regime tests U1/U2 (VIX + crypto stress)", "done"),
     ("4 clean weeks of paper trading (--config h1b daily)", "pending"),
     ("Go/no-go memo for live capital", "pending"),
     ("Execution layer built (dry/testnet/live, risk-checked)", "done"),
@@ -143,6 +144,7 @@ def build_cockpit(
     equity_history: list[float] | None = None,
     backtest: dict | None = None,
     event_study: dict | None = None,
+    regime_tests: list | None = None,
     reconciliation: dict | None = None,
     data_mode: str = "synthetic",
     out_dir: Path = OUT_DIR,
@@ -197,10 +199,20 @@ def build_cockpit(
             {"window": k, **v} for k, v in event_study.get("windows", {}).items()
         ]
         parts += [
-            "<h2>Railgun / privacy event study</h2>",
+            "<h2>Railgun / privacy event study (U3)</h2>",
             _records_table(rows),
             f"<p><b>Verdict:</b> {event_study.get('verdict', '')}</p>",
         ]
+    if regime_tests:
+        parts += [
+            "<h2>Railgun / privacy regime tests (U1 / U2)</h2>",
+            "<p class='muted'>Mean beta-adjusted abnormal return inside the "
+            "uncertainty regime vs outside it (difference-in-differences). "
+            "Positive diff = privacy outperforms in the regime.</p>",
+            _records_table(regime_tests),
+        ]
+        for t in regime_tests:
+            parts.append(f"<p><b>{t['test']}:</b> {t['verdict']}</p>")
     if reconciliation:
         parts += ["<h2>Cost reconciliation</h2>", _kv_table(reconciliation)]
 

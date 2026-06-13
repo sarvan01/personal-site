@@ -91,8 +91,15 @@ so this uses a market-data aggregator.
 ```powershell
 setx COINSTATS_API_KEY "your_key"      # once, then OPEN A NEW TERMINAL
 python scripts/fetch_privacy.py --source coinstats   # default source
-python scripts/cockpit.py --config h1b               # verdict in the cockpit
+python scripts/fetch_vix.py            # enables the U1 (VIX) regime test (FRED, free)
+python scripts/cockpit.py --config h1b               # all three tests in the cockpit
 ```
+
+This runs three tests of the Railgun thesis: the **event study (U3)** around
+privacy-specific events, plus two **regime difference-in-differences** tests —
+**U1** (privacy returns when VIX > 25) and **U2** (when BTC is in crypto-stress:
+top-quintile vol or > 20% drawdown). U2 runs from the BTC data alone; U1 needs
+`data\VIX_1d.csv` from `fetch_vix.py`.
 
 **Or CoinGecko (free, no key, but rate-limited):**
 

@@ -13,9 +13,10 @@ import requests
 FRED_CSV = "https://fred.stlouisfed.org/graph/fredgraph.csv?id={series}"
 DEFILLAMA_STABLES = "https://stablecoins.llama.fi/stablecoincharts/all"
 
-# FRED series: broad dollar index, 10y TIPS (real) yield.
+# FRED series: broad dollar index, 10y TIPS (real) yield, CBOE VIX.
 DXY_SERIES = "DTWEXBGS"
 REAL_YIELD_SERIES = "DFII10"
+VIX_SERIES = "VIXCLS"
 
 
 class MacroError(RuntimeError):

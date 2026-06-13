@@ -33,6 +33,11 @@ from trading_system.data import (
 )
 from trading_system.data import _utc_index
 from trading_system.event_study import run_event_study, synthetic_study_data
+from trading_system.regime_test import (
+    crypto_stress_regime,
+    run_regime_test,
+    vix_risk_off_regime,
+)
 from trading_system.indicators import realized_vol
 from trading_system.macro import macro_risk_off, synthetic_macro
 from trading_system.paper import PaperAccount
@@ -52,7 +57,12 @@ def load_inputs(synthetic: bool, cfg):
         funding = synthetic_funding()
         dxy, ry, stables = synthetic_macro()
         basket, bench, events = synthetic_study_data(effect=0.0)
-        return ohlc, funding, (dxy, ry, stables), (basket, bench, events)
+        # Synthetic VIX aligned to the benchmark so U1 exercises offline:
+        # calm ~15, periodic risk-off spikes to ~35 (a real mix around 25).
+        seq = pd.Series(range(len(bench)), index=bench.index)
+        vix = 15 + 20 * (seq % 90 < 18).astype(float)
+        vix.name = "close"
+        return ohlc, funding, (dxy, ry, stables), (basket, bench, events), vix
     ohlc = {sym: load_klines(sym) for sym in cfg.universe}
     funding = load_funding(cfg.benchmark)
     macro = (None, None, None)  # fetch via trading_system.macro when online
@@ -67,7 +77,13 @@ def load_inputs(synthetic: bool, cfg):
         basket = pd.DataFrame(cols)
         events = pd.read_csv(EVENTS_CSV)["date"].tolist()
         study = (basket, ohlc[cfg.benchmark]["close"], events)
-    return ohlc, funding, macro, study
+    vix = None
+    vix_path = ROOT / "data" / "VIX_1d.csv"
+    if vix_path.exists():
+        vdf = pd.read_csv(vix_path, index_col=0)
+        vdf.index = _utc_index(vdf.index)
+        vix = vdf["close"]
+    return ohlc, funding, macro, study, vix
 
 
 def main() -> int:
@@ -87,7 +103,7 @@ def main() -> int:
     cfg = CONFIGS[args.config]
 
     try:
-        ohlc, funding, macro, study = load_inputs(args.synthetic, cfg)
+        ohlc, funding, macro, study, vix = load_inputs(args.synthetic, cfg)
     except (DataError, FileNotFoundError) as exc:
         print(f"error: {exc}\nhint: run scripts/fetch_data.py, or use --synthetic", file=sys.stderr)
         return 2
@@ -158,12 +174,27 @@ def main() -> int:
         "walk_forward": wf.round(3).to_dict("records"),
     }
 
-    # --- event study ----------------------------------------------------------
+    # --- event study (U3) -----------------------------------------------------
     event_study = None
+    regime_tests = None
     if study is not None:
         basket, study_bench, events = study
         result = run_event_study(basket, study_bench, events, n_perm=args.perms)
         event_study = result.to_dict()
+
+        # --- regime tests U1 (VIX) + U2 (crypto stress) -----------------------
+        tests = []
+        u2 = run_regime_test(
+            basket, study_bench, crypto_stress_regime(study_bench), "U2",
+            "BTC crypto-stress (top-quintile 30d vol or >20% drawdown)",
+            n_perm=args.perms)
+        tests.append(u2.to_dict())
+        if vix is not None:
+            u1 = run_regime_test(
+                basket, study_bench, vix_risk_off_regime(vix), "U1",
+                "Macro risk-off (VIX > 25)", n_perm=args.perms)
+            tests.append(u1.to_dict())
+        regime_tests = tests
 
     # --- outputs ---------------------------------------------------------------
     risk = {
@@ -183,6 +214,7 @@ def main() -> int:
         equity_history=equity_history,
         backtest=backtest,
         event_study=event_study,
+        regime_tests=regime_tests,
         reconciliation=account.reconciliation(),
         data_mode="synthetic" if args.synthetic else "real",
     )
@@ -196,6 +228,7 @@ def main() -> int:
         "backtest_gate": "PASS" if gate else "FAIL",
         "data_mode": "synthetic" if args.synthetic else "real",
         "event_study": event_study,
+        "regime_tests": regime_tests,
     }
     (ROOT / "out" / "status.json").write_text(json.dumps(status, indent=2, default=str))
 
@@ -224,6 +257,12 @@ def main() -> int:
         print(f"  verdict: {event_study['verdict']}")
     else:
         print("railgun event study: not run (need data/PRIV_*_1d.csv + research/privacy_events.csv)")
+    if regime_tests:
+        for t in regime_tests:
+            print(f"railgun {t['test']} ({t['regime']}): diff {t['diff']:+.3%}/day "
+                  f"p={t['p_value']:.3f} (in={t['n_in']} out={t['n_out']})")
+    elif study is not None:
+        print("railgun U1: not run (need data/VIX_1d.csv -> run scripts/fetch_vix.py)")
     return 0
 
 
