@@ -61,23 +61,38 @@ def fetch_coingecko(coin_id: str, days: str) -> list:
     raise SystemExit(f"CoinGecko failed for {coin_id}: {last}")
 
 
-def fetch_coinstats(coin_id: str, period: str, key: str) -> list:
-    """CoinStats -> [[timestamp, price, ...], ...]. Timestamps are unix
-    seconds; points_to_frame detects the unit either way."""
+# Longest-first. "all" often exceeds a plan's allowed range (error 10012),
+# so we step down to the longest window the plan accepts.
+COINSTATS_PERIODS = ["all", "1y", "6m", "3m", "1m", "1w"]
+
+
+def fetch_coinstats(coin_id: str, period: str, key: str) -> tuple[list, str]:
+    """CoinStats -> ([[timestamp, price, ...], ...], period_used).
+
+    If period == 'auto', try COINSTATS_PERIODS longest-first and return the
+    first that yields data — so a plan that caps history still gets the most
+    it can. Timestamps are unix seconds; points_to_frame detects the unit."""
+    periods = COINSTATS_PERIODS if period == "auto" else [period]
+    headers = {"X-API-KEY": key, "accept": "application/json"}
     last = None
-    for attempt in range(4):
-        resp = requests.get(
-            f"{COINSTATS}/coins/{coin_id}/charts",
-            params={"period": period},
-            headers={"X-API-KEY": key, "accept": "application/json"},
-            timeout=30,
-        )
-        if resp.status_code == 200:
-            data = resp.json()
-            # Bare array per the docs; tolerate a {"data": [...]} wrapper too.
-            return data["data"] if isinstance(data, dict) and "data" in data else data
-        last = f"HTTP {resp.status_code}: {resp.text[:160]}"
-        time.sleep(2 ** attempt)
+    for per in periods:
+        for attempt in range(3):
+            resp = requests.get(
+                f"{COINSTATS}/coins/{coin_id}/charts",
+                params={"period": per}, headers=headers, timeout=30,
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                pts = data["data"] if isinstance(data, dict) and "data" in data else data
+                if pts:
+                    return pts, per
+                last = f"empty for period={per}"
+                break  # try a shorter window
+            last = f"HTTP {resp.status_code} period={per}: {resp.text[:140]}"
+            if resp.status_code == 429:
+                time.sleep(2 ** attempt)
+                continue  # rate-limited: retry same period
+            break  # logical error (e.g. 10012): drop to a shorter period
     raise SystemExit(f"CoinStats failed for {coin_id}: {last}")
 
 
@@ -103,7 +118,8 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--source", choices=["coinstats", "coingecko"], default="coinstats")
     parser.add_argument("--days", default="max", help="CoinGecko history length")
-    parser.add_argument("--period", default="all", help="CoinStats period (all/1y/...)")
+    parser.add_argument("--period", default="auto",
+                        help="CoinStats period: auto (longest that works) or all/1y/6m/3m/1m/1w")
     args = parser.parse_args()
 
     key = ""
@@ -115,17 +131,28 @@ def main() -> int:
             return 2
 
     (ROOT / "data").mkdir(parents=True, exist_ok=True)
+    short_cover = []
     for sym, coin_id in BASKET.items():
         print(f"fetching {sym} ({coin_id}) via {args.source} ...")
         if args.source == "coinstats":
-            points = fetch_coinstats(coin_id, args.period, key)
+            points, used = fetch_coinstats(coin_id, args.period, key)
         else:
-            points = fetch_coingecko(coin_id, args.days)
+            points, used = fetch_coingecko(coin_id, args.days), args.days
         df = points_to_frame(points)
         path = ROOT / "data" / f"PRIV_{sym}_1d.csv"
         df.to_csv(path)
-        print(f"  {len(df)} days -> {path}")
+        first, last = df.index[0].date(), df.index[-1].date()
+        print(f"  {len(df)} days [{first} -> {last}] (window={used}) -> {path}")
+        # The oldest pre-registered event is 2022-08 (Tornado Cash). Flag any
+        # coin whose history starts after 2022 — those events can't be tested.
+        if df.index[0].year > 2022:
+            short_cover.append(f"{sym} (from {first})")
         time.sleep(1)
+
+    if short_cover:
+        print("\nNOTE: limited history for: " + ", ".join(short_cover))
+        print("Events before those dates won't be testable for those coins.")
+        print("For full multi-year history, try: python scripts/fetch_privacy.py --source coingecko")
 
     print("\nDone. Now run:  python scripts/cockpit.py --config h1b")
     print("The event-study verdict will appear in out/cockpit.html.")
