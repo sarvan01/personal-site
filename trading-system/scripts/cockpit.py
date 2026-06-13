@@ -255,14 +255,12 @@ def main() -> int:
         print(f"railgun event study [0,5]: mean CAR {w.get('mean_car', float('nan')):+.2%} "
               f"p={w.get('p_value', float('nan')):.3f} n={w.get('n_events', 0)}")
         print(f"  verdict: {event_study['verdict']}")
-    else:
-        print("railgun event study: not run (need data/PRIV_*_1d.csv + research/privacy_events.csv)")
+    # H2 is closed/archived: the privacy sections render only when the
+    # research CSVs are present (see scripts/research/). No noise otherwise.
     if regime_tests:
         for t in regime_tests:
             print(f"railgun {t['test']} ({t['regime']}): diff {t['diff']:+.3%}/day "
                   f"p={t['p_value']:.3f} (in={t['n_in']} out={t['n_out']})")
-    elif study is not None:
-        print("railgun U1: not run (need data/VIX_1d.csv -> run scripts/fetch_vix.py)")
     return 0
 
 

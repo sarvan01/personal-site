@@ -1,20 +1,16 @@
 @echo off
-REM One-time setup: fetch the majors AND the privacy basket, then build the
-REM cockpit. Run this once. After this, use daily.bat (or the scheduler) for
-REM the recurring daily run. Non-destructive: it does NOT touch an existing
-REM paper ledger.
+REM One-time setup: fetch the majors and build the cockpit. Run this once.
+REM After this, use daily.bat (or the scheduler) for the recurring daily run.
+REM Non-destructive: it does NOT touch an existing paper ledger.
+REM (The H2 privacy research is closed/archived; see scripts\research\.)
 setlocal
 cd /d "%~dp0"
 
-echo [1/3] Fetching majors (BTC/ETH/BNB/XRP/SOL)...
+echo [1/2] Fetching majors (BTC/ETH/BNB/XRP/SOL)...
 python scripts\fetch_data.py --config h1b
 if errorlevel 1 goto :err
 
-echo [2/3] Fetching privacy basket for the Railgun study...
-python scripts\fetch_privacy.py
-if errorlevel 1 echo   (privacy fetch failed -- continuing; retry later with: python scripts\fetch_privacy.py)
-
-echo [3/3] Building the cockpit...
+echo [2/2] Building the cockpit...
 python scripts\cockpit.py --config h1b
 if errorlevel 1 goto :err
 

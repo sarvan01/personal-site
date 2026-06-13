@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pandas as pd
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts" / "research"))
 
 from fetch_privacy import points_to_frame, prices_to_frame  # noqa: E402
 

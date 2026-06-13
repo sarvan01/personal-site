@@ -15,7 +15,7 @@ import sys
 import time
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parent.parent.parent  # scripts/research -> trading-system
 sys.path.insert(0, str(ROOT))
 
 import pandas as pd

@@ -77,10 +77,10 @@ See **`RUNBOOK.md`** for the full step-by-step. In short:
   scale) the backtest and paper account use. Run it only after the
   paper-trading phase produces a GO in `out/decision_memo.md`.
 
-For the Railgun study on real data: place daily close CSVs for the privacy
-basket in `data/` named `PRIV_<symbol>_1d.csv` (XMR, ZEC, SCRT, RAIL, DASH —
-CoinGecko exports work), review/extend `research/privacy_events.csv` first,
-then run `python scripts/cockpit.py`; the study section appears automatically.
+The Railgun / privacy hypothesis (H2) was tested and **rejected** across all
+three tests; it is **not** part of the trading system. The reproducible code is
+archived under `scripts/research/` and `trading_system/{event_study,regime_test}.py`.
+See `research/H2_CLOSED.md` for the verdict and how to reproduce it.
 
 ## The pre-registered pass criterion
 

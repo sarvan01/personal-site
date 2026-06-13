@@ -15,7 +15,6 @@ Or by hand:
 cd "<your path>\Trading-system-package\trading-system"
 del out\paper_ledger.json          # reset the ledger once, under the h1b config
 python scripts/fetch_data.py --config h1b
-python scripts/fetch_privacy.py    # optional: enables the Railgun study
 python scripts/cockpit.py --config h1b   # seeds 60 days, writes out/cockpit.html
 start out\cockpit.html             # confirm REAL DATA badge + equity curve
 ```
@@ -81,42 +80,29 @@ Order execution is built and risk-checked but **off by default**. Path:
    Start at 10% of target size. Every order is checked against the risk
    policy and scaled by the circuit breaker before it is sent.
 
-## Optional — settle the Railgun question (H2)
+## Archived research — Railgun / privacy (H2, CLOSED)
 
-Independent of the trading clock. Privacy coins aren't reliably on Binance,
-so this uses a market-data aggregator.
+**H2 was tested and rejected across all three tests (U1/U2/U3).** Privacy coins
+are NOT part of the trading system — the universe is the five majors. The code
+below is kept only as a reproducible audit trail. Full verdict and details:
+`research\H2_CLOSED.md`.
 
-**With CoinStats Premium (recommended — more reliable than CoinGecko free):**
-
-```powershell
-setx COINSTATS_API_KEY "your_key"      # once, then OPEN A NEW TERMINAL
-python scripts/fetch_privacy.py --source coinstats   # default source
-python scripts/fetch_vix.py            # enables the U1 (VIX) regime test (FRED, free)
-python scripts/cockpit.py --config h1b               # all three tests in the cockpit
-```
-
-This runs three tests of the Railgun thesis: the **event study (U3)** around
-privacy-specific events, plus two **regime difference-in-differences** tests —
-**U1** (privacy returns when VIX > 25) and **U2** (when BTC is in crypto-stress:
-top-quintile vol or > 20% drawdown). U2 runs from the BTC data alone; U1 needs
-`data\VIX_1d.csv` from `fetch_vix.py`.
-
-**Or CoinGecko (free, no key, but rate-limited):**
+To keep your daily dashboard focused on the validated system, delete the
+cached research data once:
 
 ```powershell
-python scripts/fetch_privacy.py --source coingecko --days max
-python scripts/cockpit.py --config h1b
+del data\PRIV_*_1d.csv
+del data\VIX_1d.csv
 ```
 
-If a coin 404s, open its page on the source site and copy the id from the URL
-into `BASKET` in `scripts/fetch_privacy.py`.
+To reproduce the rejection (optional — the fetchers now live in
+`scripts\research\`):
 
-Review `research\privacy_events.csv` first (the pre-registered event list) —
-extend it BEFORE looking at returns if you want to. The study beta-adjusts
-the basket against BTC (removing the "just high-beta alts" confound), measures
-abnormal returns around each event, and runs a permutation test plus a
-drop-one-event robustness check. Read the verdict honestly: the prior is ~55%
-that it's a confounded artifact.
+```powershell
+python scripts\research\fetch_privacy.py    # needs COINSTATS_API_KEY (or --source coingecko)
+python scripts\research\fetch_vix.py        # CBOE VIX history
+python scripts\cockpit.py --config h1b       # renders U3 + U1/U2 only while the CSVs exist
+```
 
 ## The rules (fixed)
 
