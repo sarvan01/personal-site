@@ -16,7 +16,7 @@
   {
     "id": "H2",
     "claim": "Privacy assets outperform during uncertainty (Railgun hypothesis)",
-    "test": "Beta-adjusted event study vs pre-registered privacy_events.csv, permutation p<0.05, drop-one robustness (trading_system/event_study.py)",
+    "test": "Run: python scripts/fetch_privacy.py (CoinGecko: XMR/ZEC/SCRT/RAIL/DASH) then python scripts/cockpit.py. Beta-adjusted event study vs pre-registered research/privacy_events.csv: CAR windows, 10k-permutation p<0.05, drop-one robustness (trading_system/event_study.py).",
     "result": "PENDING - requires privacy basket price history (XMR/ZEC/SCRT/RAIL/DASH)",
     "decision": "prior: ~55% artifact / ~35% event-dependent / ~10% general edge; max 5% of capital even if it passes"
   },

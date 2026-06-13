@@ -73,6 +73,23 @@ Order execution is built and risk-checked but **off by default**. Path:
    Start at 10% of target size. Every order is checked against the risk
    policy and scaled by the circuit breaker before it is sent.
 
+## Optional — settle the Railgun question (H2)
+
+Independent of the trading clock. Privacy coins aren't reliably on Binance,
+so this uses CoinGecko:
+
+```powershell
+python scripts/fetch_privacy.py        # XMR/ZEC/SCRT/RAIL/DASH -> data\PRIV_*_1d.csv
+python scripts/cockpit.py --config h1b # event-study verdict appears in the cockpit
+```
+
+Review `research\privacy_events.csv` first (the pre-registered event list) —
+extend it BEFORE looking at returns if you want to. The study beta-adjusts
+the basket against BTC (removing the "just high-beta alts" confound), measures
+abnormal returns around each event, and runs a permutation test plus a
+drop-one-event robustness check. Read the verdict honestly: the prior is ~55%
+that it's a confounded artifact.
+
 ## The rules (fixed)
 
 - No config changes during the 4 weeks.
