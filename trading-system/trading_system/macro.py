@@ -6,12 +6,17 @@ fetcher degrades gracefully when the network is unavailable. Synthetic
 generators exist so the cockpit and tests work offline.
 """
 
+import io
+
 import numpy as np
 import pandas as pd
 import requests
 
 FRED_CSV = "https://fred.stlouisfed.org/graph/fredgraph.csv?id={series}"
 DEFILLAMA_STABLES = "https://stablecoins.llama.fi/stablecoincharts/all"
+# Stooq serves ^VIX daily history as plain CSV with no key — more reliable
+# than FRED's CSV endpoint, which intermittently 504s.
+STOOQ_VIX = "https://stooq.com/q/d/l/?s=%5Evix&i=d"
 
 # FRED series: broad dollar index, 10y TIPS (real) yield, CBOE VIX.
 DXY_SERIES = "DTWEXBGS"
@@ -35,6 +40,30 @@ def fetch_fred(series: str) -> pd.Series:
         name=series,
     )
     return s.dropna()
+
+
+def parse_stooq_csv(text: str) -> pd.Series:
+    """Stooq CSV (Date,Open,High,Low,Close,Volume) -> daily Close Series."""
+    df = pd.read_csv(io.StringIO(text))
+    if "Close" not in df.columns or "Date" not in df.columns:
+        raise MacroError(f"unexpected Stooq columns: {list(df.columns)}")
+    s = pd.Series(
+        df["Close"].astype(float).values,
+        index=pd.to_datetime(df["Date"], utc=True),
+        name="VIX",
+    )
+    return s.dropna()
+
+
+def fetch_vix_stooq() -> pd.Series:
+    """Fetch ^VIX daily close history from Stooq (free, no key)."""
+    try:
+        resp = requests.get(STOOQ_VIX, timeout=30)
+    except requests.RequestException as exc:
+        raise MacroError(f"Stooq VIX fetch failed: {exc}")
+    if resp.status_code != 200 or not resp.text.lstrip().startswith("Date"):
+        raise MacroError(f"Stooq VIX fetch failed: HTTP {resp.status_code} {resp.text[:80]}")
+    return parse_stooq_csv(resp.text)
 
 
 def fetch_stablecoin_mcap() -> pd.Series:

@@ -20,23 +20,32 @@ sys.path.insert(0, str(ROOT))
 
 import pandas as pd
 
-from trading_system.macro import VIX_SERIES, MacroError, fetch_fred
+from trading_system.macro import VIX_SERIES, MacroError, fetch_fred, fetch_vix_stooq
+
+# Stooq first (reliable, no key), FRED as fallback. VIX is not on CoinStats
+# (a crypto aggregator), so a traditional-markets source is required.
+SOURCES = [
+    ("Stooq", fetch_vix_stooq),
+    ("FRED", lambda: fetch_fred(VIX_SERIES)),
+]
 
 
 def main() -> int:
     vix = None
-    for attempt in range(4):
-        try:
-            vix = fetch_fred(VIX_SERIES)
+    for name, fn in SOURCES:
+        for attempt in range(2):
+            try:
+                vix = fn()
+                print(f"VIX via {name}: {len(vix)} points")
+                break
+            except MacroError as exc:
+                print(f"{name} attempt {attempt + 1} failed ({exc})", file=sys.stderr)
+                time.sleep(2 ** attempt)
+        if vix is not None:
             break
-        except MacroError as exc:
-            wait = 2 ** attempt
-            print(f"FRED attempt {attempt + 1} failed ({exc}); retrying in {wait}s ...",
-                  file=sys.stderr)
-            time.sleep(wait)
     if vix is None:
-        print("error: FRED unreachable after retries. It's usually transient — "
-              "re-run scripts/fetch_vix.py in a minute.", file=sys.stderr)
+        print("error: all VIX sources unreachable. Usually transient — re-run "
+              "scripts/fetch_vix.py in a minute.", file=sys.stderr)
         return 2
     # Reindex to a daily calendar and forward-fill weekends/holidays.
     daily = vix.reindex(

@@ -67,3 +67,18 @@ def test_injected_in_regime_outperformance_is_detected():
     assert res.diff > 0
     assert res.p_value < 0.05
     assert "OUTPERFORMS" in res.verdict
+
+
+def test_parse_stooq_vix_csv():
+    from trading_system.macro import parse_stooq_csv
+    csv = ("Date,Open,High,Low,Close,Volume\n"
+           "2022-08-08,21.1,22.0,20.5,21.29,0\n"
+           "2022-08-09,21.3,21.9,21.0,21.77,0\n")
+    s = parse_stooq_csv(csv)
+    assert len(s) == 2
+    assert s.iloc[0] == 21.29
+    assert str(s.index.tz) == "UTC"
+    # The exact downstream use: thresholding for the U1 mask.
+    from trading_system.regime_test import vix_risk_off_regime
+    mask = vix_risk_off_regime(s, threshold=21.5)
+    assert mask.dtype == bool
