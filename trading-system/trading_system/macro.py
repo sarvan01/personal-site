@@ -14,9 +14,10 @@ import requests
 
 FRED_CSV = "https://fred.stlouisfed.org/graph/fredgraph.csv?id={series}"
 DEFILLAMA_STABLES = "https://stablecoins.llama.fi/stablecoincharts/all"
-# Stooq serves ^VIX daily history as plain CSV with no key — more reliable
-# than FRED's CSV endpoint, which intermittently 504s.
-STOOQ_VIX = "https://stooq.com/q/d/l/?s=%5Evix&i=d"
+# CBOE's official VIX history CSV: authoritative, free, no key, back to 1990.
+CBOE_VIX = "https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv"
+# Stooq fallback. Its symbol for the CBOE VIX is "vi.f" (not "^vix").
+STOOQ_VIX = "https://stooq.com/q/d/l/?s=vi.f&i=d"
 
 # FRED series: broad dollar index, 10y TIPS (real) yield, CBOE VIX.
 DXY_SERIES = "DTWEXBGS"
@@ -42,21 +43,39 @@ def fetch_fred(series: str) -> pd.Series:
     return s.dropna()
 
 
-def parse_stooq_csv(text: str) -> pd.Series:
-    """Stooq CSV (Date,Open,High,Low,Close,Volume) -> daily Close Series."""
+def _close_series_from_csv(text: str, name: str) -> pd.Series:
+    """Parse a Date/OHLC CSV (CBOE or Stooq) into a daily Close Series.
+    Tolerates column-name casing differences (DATE/Date, CLOSE/Close)."""
     df = pd.read_csv(io.StringIO(text))
-    if "Close" not in df.columns or "Date" not in df.columns:
-        raise MacroError(f"unexpected Stooq columns: {list(df.columns)}")
+    cols = {c.lower(): c for c in df.columns}
+    if "date" not in cols or "close" not in cols:
+        raise MacroError(f"unexpected columns for {name}: {list(df.columns)}")
     s = pd.Series(
-        df["Close"].astype(float).values,
-        index=pd.to_datetime(df["Date"], utc=True),
-        name="VIX",
+        df[cols["close"]].astype(float).values,
+        index=pd.to_datetime(df[cols["date"]], utc=True),
+        name=name,
     )
     return s.dropna()
 
 
+def fetch_vix_cboe() -> pd.Series:
+    """Fetch VIX daily close from CBOE's official history CSV (no key)."""
+    try:
+        resp = requests.get(CBOE_VIX, timeout=30)
+    except requests.RequestException as exc:
+        raise MacroError(f"CBOE VIX fetch failed: {exc}")
+    if resp.status_code != 200 or "DATE" not in resp.text[:200].upper():
+        raise MacroError(f"CBOE VIX fetch failed: HTTP {resp.status_code} {resp.text[:80]}")
+    return _close_series_from_csv(resp.text, "VIX")
+
+
+def parse_stooq_csv(text: str) -> pd.Series:
+    """Stooq CSV (Date,Open,High,Low,Close,Volume) -> daily Close Series."""
+    return _close_series_from_csv(text, "VIX")
+
+
 def fetch_vix_stooq() -> pd.Series:
-    """Fetch ^VIX daily close history from Stooq (free, no key)."""
+    """Fetch VIX daily close history from Stooq (symbol vi.f, free, no key)."""
     try:
         resp = requests.get(STOOQ_VIX, timeout=30)
     except requests.RequestException as exc:

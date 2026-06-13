@@ -82,3 +82,15 @@ def test_parse_stooq_vix_csv():
     from trading_system.regime_test import vix_risk_off_regime
     mask = vix_risk_off_regime(s, threshold=21.5)
     assert mask.dtype == bool
+
+
+def test_parse_cboe_vix_csv():
+    from trading_system.macro import _close_series_from_csv
+    # CBOE's real format: DATE in M/D/YYYY, uppercase OHLC headers.
+    csv = ("DATE,OPEN,HIGH,LOW,CLOSE\n"
+           "1/2/1990,17.24,17.24,17.24,17.24\n"
+           "8/8/2022,21.10,22.00,20.50,21.29\n")
+    s = _close_series_from_csv(csv, "VIX")
+    assert len(s) == 2
+    assert s.iloc[1] == 21.29
+    assert str(s.index.tz) == "UTC"

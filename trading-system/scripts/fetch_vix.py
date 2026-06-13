@@ -20,11 +20,19 @@ sys.path.insert(0, str(ROOT))
 
 import pandas as pd
 
-from trading_system.macro import VIX_SERIES, MacroError, fetch_fred, fetch_vix_stooq
+from trading_system.macro import (
+    VIX_SERIES,
+    MacroError,
+    fetch_fred,
+    fetch_vix_cboe,
+    fetch_vix_stooq,
+)
 
-# Stooq first (reliable, no key), FRED as fallback. VIX is not on CoinStats
-# (a crypto aggregator), so a traditional-markets source is required.
+# CBOE's official CSV first (authoritative, no key), then Stooq, then FRED.
+# VIX is not on CoinStats (a crypto aggregator), so a traditional-markets
+# source is required.
 SOURCES = [
+    ("CBOE", fetch_vix_cboe),
     ("Stooq", fetch_vix_stooq),
     ("FRED", lambda: fetch_fred(VIX_SERIES)),
 ]
