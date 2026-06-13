@@ -26,6 +26,7 @@ from trading_system.cockpit import build_cockpit
 from trading_system.config import CONFIGS
 from trading_system.data import (
     DataError,
+    freshness_warnings,
     load_funding,
     load_klines,
     synthetic_funding,
@@ -107,6 +108,11 @@ def main() -> int:
     except (DataError, FileNotFoundError) as exc:
         print(f"error: {exc}\nhint: run scripts/fetch_data.py, or use --synthetic", file=sys.stderr)
         return 2
+
+    # Stale-data guard: warn loudly if the cockpit is about to trade the paper
+    # account on old cached data (silent fetch failure, or cockpit run without
+    # a fresh fetch). Synthetic data is intentionally historical, so skip it.
+    data_warnings = [] if args.synthetic else freshness_warnings(ohlc)
 
     # --- regime (with macro composite when available) -----------------------
     bench = ohlc[cfg.benchmark]["close"]
@@ -217,6 +223,7 @@ def main() -> int:
         regime_tests=regime_tests,
         reconciliation=account.reconciliation(),
         data_mode="synthetic" if args.synthetic else "real",
+        warnings=data_warnings,
     )
 
     status = {
@@ -227,6 +234,7 @@ def main() -> int:
         "paper": account.summary(),
         "backtest_gate": "PASS" if gate else "FAIL",
         "data_mode": "synthetic" if args.synthetic else "real",
+        "stale_data_warnings": data_warnings,
         "event_study": event_study,
         "regime_tests": regime_tests,
     }
@@ -249,6 +257,12 @@ def main() -> int:
     print(f"cockpit  -> {path}")
     print(f"status   -> {ROOT / 'out' / 'status.json'}")
     print(f"memo     -> {ROOT / 'out' / 'decision_memo.md'}")
+    if data_warnings:
+        print("\n*** STALE DATA WARNING — cockpit ran on OLD data ***")
+        for w in data_warnings:
+            print(f"  {w}")
+        print("Re-run scripts/fetch_data.py --config", args.config,
+              "before trusting today's run.\n")
     print(f"backtest gate: {'PASS' if gate else 'FAIL'} | regime: {regime['state']} | carry: {carry['signal']}")
     if event_study is not None:
         w = event_study["windows"].get("[0,5]", {})

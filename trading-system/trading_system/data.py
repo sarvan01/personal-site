@@ -7,6 +7,7 @@ generator, so the backtester and tests never need network access.
 """
 
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
@@ -142,6 +143,28 @@ def load_funding(symbol: str) -> pd.Series:
     return pd.Series(
         df.iloc[:, 0].astype(float).values, index=_utc_index(df.index), name=symbol
     )
+
+
+def freshness_warnings(ohlc: dict, max_lag_days: int = 1) -> list[str]:
+    """Warn for any symbol whose latest daily bar is more than `max_lag_days`
+    behind the current UTC date.
+
+    The newest *completed* daily bar is normally yesterday UTC (today's bar is
+    still forming and is dropped on fetch), so a lag greater than 1 day means
+    the fetch likely failed or returned stale data — exactly the silent
+    failure mode where the cockpit would otherwise trade on old data.
+    """
+    today = datetime.now(timezone.utc).date()
+    out = []
+    for sym, df in ohlc.items():
+        if df is None or len(df) == 0:
+            out.append(f"{sym}: no data rows")
+            continue
+        last = df.index[-1].date()
+        lag = (today - last).days
+        if lag > max_lag_days:
+            out.append(f"{sym}: last bar {last} is {lag} days old — data may be STALE")
+    return out
 
 
 def synthetic_klines(

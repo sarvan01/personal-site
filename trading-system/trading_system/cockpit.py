@@ -146,6 +146,7 @@ def build_cockpit(
     regime_tests: list | None = None,
     reconciliation: dict | None = None,
     data_mode: str = "synthetic",
+    warnings: list | None = None,
     out_dir: Path = OUT_DIR,
 ) -> Path:
     generated = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
@@ -155,6 +156,15 @@ def build_cockpit(
         if data_mode == "synthetic"
         else "<span class='badge on'>REAL DATA</span>"
     )
+    banner = ""
+    if warnings:
+        items = "".join(f"<li>{w}</li>" for w in warnings)
+        banner = (
+            "<div style='border:2px solid #f85149;background:#3d1416;color:#ffb3b3;"
+            "padding:8px 12px;margin:.5rem 0;border-radius:6px'>"
+            "<b>&#9888; STALE DATA</b> &mdash; the cockpit is running on old "
+            f"cached data. Re-run fetch_data.py before trusting today's run.<ul>{items}</ul></div>"
+        )
 
     parts = [
         f"<!doctype html><html lang='en'><head><meta charset='utf-8'>"
@@ -162,6 +172,7 @@ def build_cockpit(
         f"<h1>Two-Sleeve System &mdash; Cockpit</h1>"
         f"<p>Generated {generated} &nbsp; {mode_badge} &nbsp; "
         f"<b>No live orders are placed by this system.</b></p>",
+        banner,
         "<div class='grid'><div>",
         "<h2>Regime</h2>",
         _kv_table(regime),
