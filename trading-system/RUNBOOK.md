@@ -84,12 +84,25 @@ Order execution is built and risk-checked but **off by default**. Path:
 ## Optional — settle the Railgun question (H2)
 
 Independent of the trading clock. Privacy coins aren't reliably on Binance,
-so this uses CoinGecko:
+so this uses a market-data aggregator.
+
+**With CoinStats Premium (recommended — more reliable than CoinGecko free):**
 
 ```powershell
-python scripts/fetch_privacy.py        # XMR/ZEC/SCRT/RAIL/DASH -> data\PRIV_*_1d.csv
-python scripts/cockpit.py --config h1b # event-study verdict appears in the cockpit
+setx COINSTATS_API_KEY "your_key"      # once, then OPEN A NEW TERMINAL
+python scripts/fetch_privacy.py --source coinstats   # default source
+python scripts/cockpit.py --config h1b               # verdict in the cockpit
 ```
+
+**Or CoinGecko (free, no key, but rate-limited):**
+
+```powershell
+python scripts/fetch_privacy.py --source coingecko --days max
+python scripts/cockpit.py --config h1b
+```
+
+If a coin 404s, open its page on the source site and copy the id from the URL
+into `BASKET` in `scripts/fetch_privacy.py`.
 
 Review `research\privacy_events.csv` first (the pre-registered event list) —
 extend it BEFORE looking at returns if you want to. The study beta-adjusts
