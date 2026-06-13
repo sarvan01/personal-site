@@ -17,8 +17,8 @@
     "id": "H2",
     "claim": "Privacy assets outperform during uncertainty (Railgun hypothesis)",
     "test": "Run: python scripts/fetch_privacy.py (CoinGecko: XMR/ZEC/SCRT/RAIL/DASH) then python scripts/cockpit.py. Beta-adjusted event study vs pre-registered research/privacy_events.csv: CAR windows, 10k-permutation p<0.05, drop-one robustness (trading_system/event_study.py).",
-    "result": "TESTED 2026-06-13. U3 event study (8 events, beta-adjusted vs BTC): [0,+5] mean CAR -1.49%, p=0.761, n=8 -> no effect. U2 crypto-stress regime (BTC top-quintile vol or >20% drawdown): privacy UNDERPERFORMS -0.50%/day, p=0.995, in=1217/out=1637 -> strongly rejects the thesis (high-beta sells off harder in stress). U1 macro risk-off (VIX>25): pending (transient FRED outage; re-run fetch_vix.py). Two of three tests reject; confirms the ~55% confounded-artifact prior.",
-    "decision": "Reject the privacy-outperformance thesis (U3 + U2 both negative, U2 emphatically). No capital. Run U1 when FRED is up to complete the set."
+    "result": "CLOSED 2026-06-13 \u2014 REJECTED by all three tests. U3 event study (8 events, beta-adjusted): [0,+5] CAR -1.49%, p=0.761 -> no effect. U2 crypto-stress regime: privacy UNDERPERFORMS -0.50%/day, p=0.995 (in=1217/out=1637). U1 macro risk-off (VIX>25, CBOE history): privacy UNDERPERFORMS -0.63%/day, p=0.996 (in=429/out=2425). The thesis is not just unsupported but directionally BACKWARDS: privacy coins (high-beta) sell off harder in uncertainty. Matches the ~55% confounded-artifact prior; the original observation was recency bias around the 2025 ZEC rally.",
+    "decision": "REJECT and close H2. No capital, ever, on this thesis. The two surviving edges are H1b (trend) and H3 (carry), both in paper trading."
   },
   {
     "id": "H3",

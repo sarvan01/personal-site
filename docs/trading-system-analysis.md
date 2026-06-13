@@ -17,7 +17,7 @@
 | 2026-06-12 | **H1** — trend, as registered (BTC/ETH, 50/100/200)     | **FAIL as registered.** Sharpe 1.12 / 1.03 / 0.597 — failed only on the 200-day leg. Avg gross exposure 2.5% (sizing too timid). |
 | 2026-06-12 | **H1b** — trend, post-hoc (5 majors, 50/100, 1% risk)   | **GATE PASS.** Sharpe 1.26 / 1.10; CAGR ~11% / 9.5%; vol 8.6%; maxDD −14.6%. Still requires 4 clean paper weeks before capital. |
 | 2026-06-12 | **H3** — funding-rate carry (delta-neutral)             | **PASS.** +7.3%/yr net on sleeve capital since 2020 (10.1% gross), deployed 46% of the time, 18 round trips, costs at 25 bps/side. |
-| 2026-06-13 | **H2** — Railgun / privacy outperforms in uncertainty   | **REJECTED (event study).** 8 pre-registered privacy events, beta-adjusted vs BTC: [0,+5] mean CAR **−1.49%**, permutation **p=0.761**, n=8 — no significant effect, point estimate slightly negative. Confirms the ~55% "confounded artifact" prior (high-beta confound). U1/U2 regime tests not yet run. |
+| 2026-06-13 | **H2** — Railgun / privacy outperforms in uncertainty   | **REJECTED — closed, all 3 tests.** U3 event study: CAR −1.49%, p=0.76 (no effect). U2 crypto-stress: **−0.50%/day**, p=0.995. U1 macro risk-off (VIX>25): **−0.63%/day**, p=0.996. Privacy coins (high-beta) actually **underperform** in uncertainty — the thesis is directionally backwards. Confirms the ~55% confounded-artifact prior; original observation was recency bias around the 2025 ZEC rally. |
 
 Because H1b was formed _after_ seeing H1's results, it carries a stricter confirmation bar (expanded universe as partial fresh evidence, 4 clean paper weeks, live at 10% size). See `trading-system/research/hypothesis_log.json` for the full audit trail.
 
@@ -32,7 +32,7 @@ Because H1b was formed _after_ seeing H1's results, it carries a stricter confir
 
 The 30-day MVP is executed and the system is in the **paper-trading phase** (Section 8, weeks 3–4 → the 90-day plan). No live capital deployed. Next gate: 4 clean paper weeks → `out/decision_memo.md` flips to GO → testnet → live at 10% size.
 
-The Railgun hypothesis (H2) — the observation that originally motivated this project — has been **tested and rejected**: a beta-adjusted event study over the pre-registered privacy events shows no significant outperformance (slightly negative, p=0.76). This is the system's intended value in miniature: a vivid, plausible-feeling pattern killed cheaply with a rigorous method before any capital was committed.
+The Railgun hypothesis (H2) — the observation that originally motivated this project — has been **tested and rejected across all three definitions of "uncertainty"** the methodology specified: the event study (p=0.76, no effect), the crypto-stress regime (−0.50%/day, p=0.995), and the macro risk-off regime (−0.63%/day, p=0.996). Privacy coins, being high-beta, actually *underperform* in uncertainty — the thesis is directionally backwards. This is the system's intended value in miniature: a vivid, plausible-feeling pattern killed cheaply and rigorously before any capital was committed.
 
 ---
 
