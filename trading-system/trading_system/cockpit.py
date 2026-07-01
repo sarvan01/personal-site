@@ -204,6 +204,51 @@ def _signal_cards(signals: dict) -> str:
     return "<div class='cards'>" + "".join(cards) + "</div>"
 
 
+def _milkroad_panel(m: dict) -> str:
+    """Milk Road CONTEXT feed — indicators + latest trades. Explicitly not a
+    trading signal; neutral colouring so it never reads as buy/sell guidance."""
+    inds = m.get("indicators", {}) or {}
+    meters = []
+    for key in ("macro_index", "macro_pulse", "crypto_pulse"):
+        if key not in inds:
+            continue
+        ind = inds[key]
+        v = ind.get("value")
+        pct = max(0.0, min(100.0, float(v) if v is not None else 0.0))
+        meters.append(
+            f"<div class='card'><div class='kpi-v mono'>{'—' if v is None else v}"
+            f"<span class='muted' style='font-size:12px'> {ind.get('label','')}</span></div>"
+            f"<div class='bar'><span style='width:{pct:.0f}%'></span></div>"
+            f"<div class='kpi-l'>{key.replace('_',' ')}</div>"
+            f"<div class='kpi-s'>as of {ind.get('as_of','—')}</div></div>"
+        )
+    tone = {"BUY": "on", "ADD": "on", "SELL": "off", "TRIM": "off"}
+    rows = []
+    for t in (m.get("trades") or [])[:12]:
+        act = str(t.get("action", "")).upper()
+        cls = tone.get(act, "")
+        pill = (f"<span class='pill {cls}'>{act}</span>" if cls
+                else f"<span class='pill' style='background:#1c2436;color:#8b97a8'>{act}</span>")
+        note = t.get("note", "")
+        rows.append(
+            f"<tr><td class='mono'>{t.get('date','')}</td><td>{pill}</td>"
+            f"<td><b>{t.get('asset','')}</b></td><td class='muted'>{note}</td></tr>"
+        )
+    trades_html = (
+        f"<table><tr><th>date</th><th>action</th><th>asset</th><th>note</th></tr>"
+        f"{''.join(rows)}</table>" if rows else "<p class='muted'>no trades in feed</p>"
+    )
+    updated = m.get("updated_utc", "—")
+    return (
+        "<h2>Milk Road — context feed</h2>"
+        f"<div class='banner' style='border-color:{LINE};background:{CARD};color:{MUTE}'>"
+        "<b>CONTEXT ONLY — not a trading signal.</b> Informational; it does not "
+        f"drive the strategy or the paper account. Updated {updated}.</div>"
+        f"<div class='grid gauges'>{''.join(meters)}</div>"
+        f"<div class='panel'>{trades_html}</div>"
+    )
+
+
 def _plan_section() -> str:
     icon = {"done": "&#10003;", "pending": "&#9203;", "gated": "&#128274;"}
     items = "".join(
@@ -232,6 +277,7 @@ def build_cockpit(
     reconciliation: dict | None = None,
     data_mode: str = "synthetic",
     warnings: list | None = None,
+    milkroad: dict | None = None,
     out_dir: Path = OUT_DIR,
 ) -> Path:
     generated = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
@@ -330,6 +376,7 @@ def build_cockpit(
         f"{banner}"
         f"<h2>At a glance</h2><div class='kpis'>{''.join(kpis)}</div>"
         f"<h2>Gauges</h2><div class='gauges'>{g_exposure}{g_dd}{g_fund}{g_gate}</div>"
+        f"{_milkroad_panel(milkroad) if milkroad else ''}"
         f"<h2>Equity curve (paper)</h2>{_area_chart(equity_history or [])}"
         f"<h2>Sleeve A — trend signals</h2>{_signal_cards(signals)}"
         f"<h2>Sleeve B — funding carry</h2><div class='panel'>"

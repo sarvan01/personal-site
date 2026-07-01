@@ -43,6 +43,7 @@ from trading_system.regime_test import (
 from trading_system.indicators import realized_vol
 from trading_system.macro import macro_risk_off, synthetic_macro
 from trading_system.paper import PaperAccount
+from trading_system.milkroad import load_milkroad, sample_milkroad
 from trading_system.regime import classify
 from trading_system.risk import asset_weight
 from trading_system.signals import latest_targets
@@ -114,6 +115,11 @@ def main() -> int:
     # account on old cached data (silent fetch failure, or cockpit run without
     # a fresh fetch). Synthetic data is intentionally historical, so skip it.
     data_warnings = [] if args.synthetic else freshness_warnings(ohlc)
+
+    # Milk Road CONTEXT feed (display only; never drives trades). Real: read
+    # data/milkroad.json if present. Synthetic: show the sample so the panel
+    # renders in the demo.
+    milkroad = sample_milkroad() if args.synthetic else load_milkroad()
 
     # --- regime (with macro composite when available) -----------------------
     bench = ohlc[cfg.benchmark]["close"]
@@ -225,6 +231,7 @@ def main() -> int:
         reconciliation=account.reconciliation(),
         data_mode="synthetic" if args.synthetic else "real",
         warnings=data_warnings,
+        milkroad=milkroad,
     )
 
     status = {
@@ -240,6 +247,7 @@ def main() -> int:
         "backtest": backtest,
         "event_study": event_study,
         "regime_tests": regime_tests,
+        "milkroad": milkroad,
         "generated_utc": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
     }
     (ROOT / "out" / "status.json").write_text(json.dumps(status, indent=2, default=str))

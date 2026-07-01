@@ -1,0 +1,26 @@
+{
+  "updated_utc": "2026-06-13 20:00 UTC",
+  "source": "manual",
+  "indicators": {
+    "macro_index": { "value": 62, "label": "Risk-On", "as_of": "2026-06-13" },
+    "macro_pulse": { "value": 54, "label": "Neutral+", "as_of": "2026-06-13" },
+    "crypto_pulse": { "value": 71, "label": "Greed", "as_of": "2026-06-13" }
+  },
+  "trades": [
+    {
+      "date": "2026-06-12",
+      "action": "BUY",
+      "asset": "SOL",
+      "note": "adding to core position",
+      "source": "discord"
+    },
+    { "date": "2026-06-11", "action": "HOLD", "asset": "BTC", "note": "", "source": "discord" },
+    {
+      "date": "2026-06-09",
+      "action": "WATCH",
+      "asset": "LINK",
+      "note": "waiting for reclaim of range",
+      "source": "discord"
+    }
+  ]
+}

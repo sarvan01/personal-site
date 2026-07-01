@@ -104,6 +104,20 @@ python scripts\research\fetch_vix.py        # CBOE VIX history
 python scripts\cockpit.py --config h1b       # renders U3 + U1/U2 only while the CSVs exist
 ```
 
+## Optional — Milk Road context feed
+
+A **display-only** side panel (indicators + latest trades) — context, not a
+trading signal; it never touches the strategy or paper account. Quick start:
+
+```powershell
+copy milkroad.sample.json data\milkroad.json   # then edit by hand, or use a feed
+python scripts\cockpit.py --config h1b
+```
+
+Optional local ingestion templates live in `scripts\feeds\` (your own Discord
+bot for trades; a skeleton for the milkroad.com indicators). Full schema and
+ToS notes: `docs\milkroad-feed.md`.
+
 ## The rules (fixed)
 
 - No config changes during the 4 weeks.
