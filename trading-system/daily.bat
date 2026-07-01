@@ -5,6 +5,17 @@ REM scripts\schedule_daily.ps1). Runs in DRY/paper mode only -- no real orders.
 setlocal
 cd /d "%~dp0"
 
+REM Guard: Python must be installed and on PATH (the window stays open on
+REM failure so the reason is readable).
+where python >nul 2>nul
+if errorlevel 1 (
+  echo Python was not found on PATH.
+  echo Install it from https://www.python.org/downloads/ and tick
+  echo "Add python.exe to PATH" in the installer, then run:
+  echo     pip install -r requirements.txt
+  goto :err
+)
+
 echo [1/2] Fetching latest data...
 python scripts\fetch_data.py --config h1b
 if errorlevel 1 goto :err
@@ -20,5 +31,6 @@ exit /b 0
 
 :err
 echo.
-echo FAILED -- see the messages above. (Network blocked? Re-run later.)
+echo FAILED -- see the messages above. (Missing Python/packages? Network blocked?)
+pause
 exit /b 1
