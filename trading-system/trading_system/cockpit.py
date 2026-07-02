@@ -13,6 +13,8 @@ import math
 from datetime import datetime, timezone
 from pathlib import Path
 
+from .milkroad import INDICATOR_ORDER
+
 ROOT = Path(__file__).resolve().parent.parent
 OUT_DIR = ROOT / "out"
 HYPOTHESIS_LOG = ROOT / "research" / "hypothesis_log.json"
@@ -209,12 +211,17 @@ def _milkroad_panel(m: dict) -> str:
     trading signal; neutral colouring so it never reads as buy/sell guidance."""
     inds = m.get("indicators", {}) or {}
     meters = []
-    for key in ("macro_index", "macro_pulse", "crypto_pulse"):
+    for key in INDICATOR_ORDER:
         if key not in inds:
             continue
         ind = inds[key]
         v = ind.get("value")
-        pct = max(0.0, min(100.0, float(v) if v is not None else 0.0))
+        # Indicators may use any range (e.g. Milk Road's Macro Index runs
+        # roughly -3..+3, not 0-100) -- normalize using optional min/max,
+        # defaulting to 0-100 for indicators that already are (fear_greed).
+        lo, hi = float(ind.get("min", 0)), float(ind.get("max", 100))
+        span = (hi - lo) or 1.0
+        pct = max(0.0, min(100.0, ((float(v) - lo) / span * 100.0) if v is not None else 0.0))
         meters.append(
             f"<div class='card'><div class='kpi-v mono'>{'—' if v is None else v}"
             f"<span class='muted' style='font-size:12px'> {ind.get('label','')}</span></div>"
@@ -223,20 +230,37 @@ def _milkroad_panel(m: dict) -> str:
             f"<div class='kpi-s'>as of {ind.get('as_of','—')}</div></div>"
         )
     tone = {"BUY": "on", "ADD": "on", "SELL": "off", "TRIM": "off"}
+    trade_list = (m.get("trades") or [])[:12]
+    # Optional richer columns (Milk Road's Analyst Trade Log has these; plain
+    # manual/Discord entries won't) -- only add a column if any trade has it.
+    has_analyst = any(t.get("analyst") for t in trade_list)
+    has_perf = any(t.get("perf_pct") is not None for t in trade_list)
     rows = []
-    for t in (m.get("trades") or [])[:12]:
+    for t in trade_list:
         act = str(t.get("action", "")).upper()
         cls = tone.get(act, "")
         pill = (f"<span class='pill {cls}'>{act}</span>" if cls
                 else f"<span class='pill' style='background:#1c2436;color:#8b97a8'>{act}</span>")
         note = t.get("note", "")
-        rows.append(
-            f"<tr><td class='mono'>{t.get('date','')}</td><td>{pill}</td>"
-            f"<td><b>{t.get('asset','')}</b></td><td class='muted'>{note}</td></tr>"
-        )
+        cells = [f"<td class='mono'>{t.get('date','')}</td>"]
+        if has_analyst:
+            cells.append(f"<td>{t.get('analyst','')}</td>")
+        cells.append(f"<td>{pill}</td><td><b>{t.get('asset','')}</b></td>")
+        if has_perf:
+            p = t.get("perf_pct")
+            pcls = "pass" if isinstance(p, (int, float)) and p > 0 else \
+                   "fail" if isinstance(p, (int, float)) and p < 0 else "muted"
+            cells.append(f"<td class='mono {pcls}'>{f'{p:+.1f}%' if p is not None else '—'}</td>")
+        cells.append(f"<td class='muted'>{note}</td>")
+        rows.append(f"<tr>{''.join(cells)}</tr>")
+    head = (
+        "<th>date</th>" + ("<th>analyst</th>" if has_analyst else "")
+        + "<th>action</th><th>asset</th>" + ("<th>perf</th>" if has_perf else "")
+        + "<th>note</th>"
+    )
     trades_html = (
-        f"<table><tr><th>date</th><th>action</th><th>asset</th><th>note</th></tr>"
-        f"{''.join(rows)}</table>" if rows else "<p class='muted'>no trades in feed</p>"
+        f"<table><tr>{head}</tr>{''.join(rows)}</table>"
+        if rows else "<p class='muted'>no trades in feed</p>"
     )
     updated = m.get("updated_utc", "—")
     return (

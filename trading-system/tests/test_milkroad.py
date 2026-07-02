@@ -11,9 +11,12 @@ from trading_system.milkroad import (
 
 def test_sample_has_expected_shape():
     m = sample_milkroad()
-    assert set(m["indicators"]) == {"macro_index", "macro_pulse", "crypto_pulse"}
+    assert set(m["indicators"]) == {"macro_index", "macro_pulse", "crypto_pulse", "fear_greed"}
     assert all("value" in v for v in m["indicators"].values())
     assert isinstance(m["trades"], list) and m["trades"]
+    # macro_index demonstrates a non-0..100 range via min/max.
+    assert m["indicators"]["macro_index"]["min"] == -3
+    assert m["indicators"]["macro_index"]["max"] == 3
 
 
 def test_load_missing_returns_none(tmp_path):
@@ -74,3 +77,65 @@ def test_cockpit_omits_panel_when_no_milkroad(tmp_path):
         out_dir=tmp_path,
     )
     assert "Milk Road" not in path.read_text()
+
+
+def test_cockpit_normalizes_non_0_100_indicator_range(tmp_path):
+    # Milk Road's Macro Index runs -3..+3, not 0-100. value=0.29 on that
+    # range should normalize to (0.29 - -3) / 6 * 100 = ~54.8% -> "55%",
+    # NOT be clamped near-zero as it would if treated as a 0-100 value.
+    m = sample_milkroad()
+    path = build_cockpit(
+        regime={"state": "chop", "exposure_multiplier": 0.5},
+        signals={}, carry={"signal": "OUT"}, risk={},
+        milkroad=m, data_mode="synthetic", out_dir=tmp_path,
+    )
+    html = path.read_text()
+    assert "width:55%" in html
+    assert "0.29" in html
+
+
+def test_cockpit_shows_fear_greed_indicator(tmp_path):
+    path = build_cockpit(
+        regime={"state": "chop", "exposure_multiplier": 0.5},
+        signals={}, carry={"signal": "OUT"}, risk={},
+        milkroad=sample_milkroad(), data_mode="synthetic", out_dir=tmp_path,
+    )
+    html = path.read_text()
+    assert "fear greed" in html.lower()
+    assert "Extreme Fear" in html
+
+
+def test_trades_table_shows_analyst_and_perf_when_present(tmp_path):
+    m = {
+        "indicators": {},
+        "trades": [
+            {"date": "2026-07-01", "action": "SELL", "asset": "MU", "note": "",
+             "analyst": "Melvin", "perf_pct": 144.94},
+        ],
+    }
+    path = build_cockpit(
+        regime={"state": "chop", "exposure_multiplier": 0.5},
+        signals={}, carry={"signal": "OUT"}, risk={},
+        milkroad=m, data_mode="synthetic", out_dir=tmp_path,
+    )
+    html = path.read_text()
+    assert "Melvin" in html
+    assert "+144.9%" in html
+    assert "<th>analyst</th>" in html
+    assert "<th>perf</th>" in html
+
+
+def test_trades_table_omits_optional_columns_when_absent(tmp_path):
+    # Plain manual/Discord-style trades (no analyst/perf_pct) must not grow
+    # empty columns.
+    path = build_cockpit(
+        regime={"state": "chop", "exposure_multiplier": 0.5},
+        signals={}, carry={"signal": "OUT"}, risk={},
+        milkroad={"indicators": {}, "trades": [
+            {"date": "2026-07-01", "action": "HOLD", "asset": "BTC", "note": ""}
+        ]},
+        data_mode="synthetic", out_dir=tmp_path,
+    )
+    html = path.read_text()
+    assert "<th>analyst</th>" not in html
+    assert "<th>perf</th>" not in html

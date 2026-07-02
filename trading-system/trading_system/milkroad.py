@@ -18,7 +18,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 MILKROAD_PATH = ROOT / "data" / "milkroad.json"
 
-INDICATOR_ORDER = ("macro_index", "macro_pulse", "crypto_pulse")
+INDICATOR_ORDER = ("macro_index", "macro_pulse", "crypto_pulse", "fear_greed")
 VALID_ACTIONS = ("BUY", "SELL", "HOLD", "WATCH", "TRIM", "ADD")
 
 
@@ -63,9 +63,13 @@ def sample_milkroad() -> dict:
         "updated_utc": "sample",
         "source": "sample",
         "indicators": {
-            "macro_index": {"value": 62, "label": "Risk-On", "as_of": "2026-06-13"},
+            # Milk Road's MRMI runs roughly -3..+3, not 0-100 -- min/max let
+            # the dashboard meter normalize any indicator's actual range.
+            "macro_index": {"value": 0.29, "label": "Risk On", "as_of": "2026-07-02",
+                            "min": -3, "max": 3},
             "macro_pulse": {"value": 54, "label": "Neutral+", "as_of": "2026-06-13"},
             "crypto_pulse": {"value": 71, "label": "Greed", "as_of": "2026-06-13"},
+            "fear_greed": {"value": 19, "label": "Extreme Fear", "as_of": "2026-07-02"},
         },
         "trades": [
             {"date": "2026-06-12", "action": "BUY", "asset": "SOL",

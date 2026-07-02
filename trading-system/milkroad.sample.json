@@ -1,26 +1,36 @@
 {
-  "updated_utc": "2026-06-13 20:00 UTC",
+  "updated_utc": "2026-07-02 13:00 UTC",
   "source": "manual",
   "indicators": {
-    "macro_index": { "value": 62, "label": "Risk-On", "as_of": "2026-06-13" },
+    "macro_index": {
+      "value": 0.29,
+      "label": "Risk On",
+      "as_of": "2026-07-02",
+      "min": -3,
+      "max": 3
+    },
     "macro_pulse": { "value": 54, "label": "Neutral+", "as_of": "2026-06-13" },
-    "crypto_pulse": { "value": 71, "label": "Greed", "as_of": "2026-06-13" }
+    "crypto_pulse": { "value": 71, "label": "Greed", "as_of": "2026-06-13" },
+    "fear_greed": { "value": 19, "label": "Extreme Fear", "as_of": "2026-07-02" }
   },
   "trades": [
     {
-      "date": "2026-06-12",
+      "date": "2026-07-01",
       "action": "BUY",
-      "asset": "SOL",
-      "note": "adding to core position",
-      "source": "discord"
+      "asset": "BTC",
+      "note": "buying the bear market lows",
+      "analyst": "John",
+      "source": "milkroad.com"
     },
-    { "date": "2026-06-11", "action": "HOLD", "asset": "BTC", "note": "", "source": "discord" },
     {
-      "date": "2026-06-09",
-      "action": "WATCH",
-      "asset": "LINK",
-      "note": "waiting for reclaim of range",
-      "source": "discord"
-    }
+      "date": "2026-06-30",
+      "action": "SELL",
+      "asset": "MU",
+      "note": "trimming to diversify AI memory exposure",
+      "analyst": "Melvin",
+      "perf_pct": 144.94,
+      "source": "milkroad.com"
+    },
+    { "date": "2026-06-29", "action": "HOLD", "asset": "ETH", "note": "", "source": "manual" }
   ]
 }

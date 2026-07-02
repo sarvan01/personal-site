@@ -114,9 +114,10 @@ copy milkroad.sample.json data\milkroad.json   # then edit by hand, or use a fee
 python scripts\cockpit.py --config h1b
 ```
 
-Optional local ingestion templates live in `scripts\feeds\` (your own Discord
-bot for trades; a skeleton for the milkroad.com indicators). Full schema and
-ToS notes: `docs\milkroad-feed.md`.
+For real data: `scripts\feeds\fetch_fear_greed.py` is free with zero setup
+(no login). `scripts\feeds\fetch_milkroad_indicators.py` pulls your Milk Road
+PRO indicators via a short one-time DevTools setup; a Discord-bot template
+covers trades. Full walkthrough and ToS notes: `docs\milkroad-feed.md`.
 
 ## The rules (fixed)
 
