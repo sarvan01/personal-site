@@ -114,10 +114,13 @@ copy milkroad.sample.json data\milkroad.json   # then edit by hand, or use a fee
 python scripts\cockpit.py --config h1b
 ```
 
-For real data: `scripts\feeds\fetch_fear_greed.py` is free with zero setup
-(no login). `scripts\feeds\fetch_milkroad_indicators.py` pulls your Milk Road
-PRO indicators via a short one-time DevTools setup; a Discord-bot template
-covers trades. Full walkthrough and ToS notes: `docs\milkroad-feed.md`.
+For real data: `scripts\feeds\fetch_fear_greed.py` uses your CoinStats key
+(or a free no-login fallback). `scripts\feeds\fetch_milkroad_login.py` logs
+into Milk Road PRO each run (credentials typed locally, never sent to
+Claude) and pulls indicators **and** the Analyst Trade Log in one go —
+`fetch_milkroad_indicators.py` is the saved-cookie alternative if you'd
+rather not log in every time. Full walkthrough and ToS notes:
+`docs\milkroad-feed.md`.
 
 ## The rules (fixed)
 

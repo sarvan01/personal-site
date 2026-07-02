@@ -1,0 +1,7 @@
+{
+  "login_url": "PASTE the login POST endpoint URL you found in DevTools (F12 -> Network -> Fetch/XHR -> submit the login form -> find the POST request)",
+  "content_type": "json",
+  "email_field": "email",
+  "password_field": "password",
+  "extra_fields": {}
+}

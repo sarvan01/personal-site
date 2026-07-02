@@ -9,15 +9,19 @@ tested through the same gate as H1b/H3.
 ## How it works
 
 The cockpit reads `data/milkroad.json` (if present) and renders the panel.
-No file → no panel (nothing else changes). Three ways to populate it, in
+No file → no panel (nothing else changes). Four ways to populate it, in
 order of effort:
 
 1. **Zero-setup**: `fetch_fear_greed.py` — the Crypto Fear & Greed Index, via
    your CoinStats Premium key (already set up for the archived privacy
    study) or a free no-login fallback.
 2. **Manual**: copy the sample and edit it by hand.
-3. **Automated from Milk Road PRO**: `fetch_milkroad_indicators.py` — needs a
-   short one-time DevTools setup (below).
+3. **Automated with a saved cookie**: `fetch_milkroad_indicators.py` — log in
+   once in your browser, copy the session cookie, reuse it until it expires.
+4. **Automated, logging in every run**: `fetch_milkroad_login.py` — type your
+   Milk Road email/password each time (never sent to Claude, never saved to
+   disk) instead of managing a cookie. Also pulls the Analyst Trade Log in
+   the same run. Both need a short one-time DevTools setup (below).
 
 ```powershell
 copy milkroad.sample.json data\milkroad.json
@@ -90,7 +94,10 @@ doubt.
 
 The `/data/` pages render client-side (JavaScript fetches the numbers after
 load), so scraping raw HTML gets nothing — you need the underlying JSON API
-call, found once via DevTools.
+call, found once via DevTools. Two ways to authenticate the requests once you
+have it: a **saved cookie** (simpler, expires every so often) or **logging in
+each run** (no cookie management, but depends on guessing Milk Road's login
+flow correctly — see the caveat in Option 2b).
 
 ### Finding the data (one-time, ~2 min per page)
 
@@ -109,10 +116,11 @@ call, found once via DevTools.
    label, e.g. `{"data": {"score": 0.29, "label": "Risk On"}}` →
    `value_path = "data.score"`, `label_path = "data.label"`.
 8. On the same request, open **Headers** → *Request Headers* → copy the full
-   `cookie:` value. This is shared across all Milk Road pages — copy it once.
+   `cookie:` value. This is shared across all Milk Road pages — copy it once
+   (only needed for Option 2a below; Option 2b doesn't use a saved cookie).
 9. Repeat for `/data/macro-pulse/` and `/data/crypto-pulse/`.
 
-### Configure and run
+### Option 2a — saved cookie
 
 ```powershell
 copy scripts\feeds\milkroad_endpoints.sample.json scripts\feeds\milkroad_endpoints.json
@@ -131,11 +139,69 @@ python scripts\feeds\fetch_milkroad_indicators.py
 python scripts\cockpit.py --config h1b
 ```
 
-**Cookies expire** (days to weeks) — when it starts erroring, repeat step 8–9
+**Cookies expire** (days to weeks) — when it starts erroring, repeat step 8
 and update `MILKROAD_COOKIE`. `scripts\feeds\milkroad_endpoints.json` is
 gitignored (your personal config, not committed).
 
-## Trades — two sources, pick one
+### Option 2b — log in every run instead of managing a cookie
+
+`fetch_milkroad_login.py` prompts for your email/password each time it runs
+(via `getpass`, so it's never echoed to the screen) and uses the resulting
+session to fetch indicators **and** the Analyst Trade Log in one go. Your
+credentials are typed locally and sent directly from your machine to Milk
+Road's own login endpoint — never to Claude, never written to disk.
+
+**Honest caveat**: this is the least certain piece of the integration. I
+don't know Milk Road's actual login flow (auth provider, whether it needs a
+CSRF token first, JSON vs form-encoded, or whether the form has bot
+protection that blocks non-browser requests outright). You configure the
+real endpoint once via one more DevTools capture; if the login POST fails
+outright, fall back to Option 2a instead — it doesn't depend on guessing the
+login flow at all, only on a cookie from a normal browser login.
+
+**Finding the login endpoint (one-time):**
+
+1. Log **out** of milkroad.com, then open DevTools (`F12`) → **Network** →
+   filter to **Fetch/XHR**, and keep it open.
+2. Log back in normally through the site's login form.
+3. Find the POST request that fired when you submitted the form (usually
+   named something with `login`, `signin`, or `auth`).
+4. Copy its URL → that's `login_url`.
+5. Click its **Payload** (or **Request**) tab to see exactly what was sent —
+   note the field names for email and password (commonly `email`/`password`,
+   but confirm), and whether it's JSON (`Content-Type: application/json`) or
+   form-encoded (`Content-Type: application/x-www-form-urlencoded`).
+
+**Configure and run:**
+
+```powershell
+copy scripts\feeds\milkroad_login_config.sample.json scripts\feeds\milkroad_login_config.json
+notepad scripts\feeds\milkroad_login_config.json
+REM paste login_url, set content_type to "json" or "form", fix field names if needed
+
+REM also set these up if you want indicators + trades in the same run:
+copy scripts\feeds\milkroad_endpoints.sample.json scripts\feeds\milkroad_endpoints.json
+copy scripts\feeds\milkroad_trades_config.sample.json scripts\feeds\milkroad_trades_config.json
+REM (finding the trade log endpoint uses the same DevTools technique --
+REM  see "Trades" below)
+
+python scripts\feeds\fetch_milkroad_login.py --debug
+```
+
+`--debug` prints the login response status, which cookies came back, and
+each endpoint's raw JSON — use it to confirm the login actually worked
+before trusting the output. Once it's working:
+
+```powershell
+python scripts\feeds\fetch_milkroad_login.py
+python scripts\cockpit.py --config h1b
+```
+
+If login fails with an HTTP error, double check `login_url`/field
+names/`content_type` first; if it still fails, the login form is likely
+behind bot protection and Option 2a is the more reliable path.
+
+## Trades — three sources, pick one
 
 ### Recommended: Milk Road's own "Analyst Trade Log" page
 
@@ -144,10 +210,22 @@ If your account shows **Trades → Analyst Trade Log** with a structured table
 better source than Discord — same DevTools technique as above (search
 network responses for a distinctive rationale phrase you can see on the page,
 or an asset ticker like `CRWV`, to find the right request fast), no bot setup
-required. This isn't built as a ready-made script yet since the exact JSON
-shape varies by account — if you find the endpoint, paste me an example
-response (redact the cookie) and I'll wire up a proper fetcher for it, mapped
-to the richer `analyst`/`perf_pct` trade fields above.
+required.
+
+`fetch_milkroad_login.py` (Option 2b above) fetches this automatically once
+`milkroad_trades_config.json` is configured — copy
+`milkroad_trades_config.sample.json`, paste the endpoint URL, and set
+`records_path` to wherever the list of trades sits in the response (e.g.
+`"data"` if the response is `{"data": [...]}`), plus the per-field paths
+(`date_path`, `analyst_path`, `action_path`, `asset_path`, `note_path`,
+`perf_path`) relative to each trade record. Run with `--debug` first to see
+the raw shape and get the paths right — same technique as the indicators
+config. Trades render in the dashboard with `analyst` and `perf%` columns
+automatically once present.
+
+If you'd rather use the cookie-based approach instead of logging in each
+run, tell me and I'll add the same `records_path`/field-path config support
+to `fetch_milkroad_indicators.py`.
 
 ### Alternative: your own Discord bot
 
@@ -167,6 +245,7 @@ actual message format.
 
 ---
 
-All three scripts **merge** into `data/milkroad.json` without clobbering
-other sections — run `fetch_fear_greed.py`, `fetch_milkroad_indicators.py`,
-and a trades fetcher independently, in any order.
+All the fetch scripts **merge** into `data/milkroad.json` without clobbering
+other sections — run `fetch_fear_greed.py`, `fetch_milkroad_indicators.py` or
+`fetch_milkroad_login.py`, and (if separate) a Discord trades fetcher
+independently, in any order.
