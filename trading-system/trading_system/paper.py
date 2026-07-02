@@ -19,6 +19,30 @@ from .config import SystemConfig
 LEDGER_PATH = Path(__file__).resolve().parent.parent / "out" / "paper_ledger.json"
 
 
+def days_to_replay(last_date: str | None, index: pd.DatetimeIndex, default: int) -> int:
+    """How many trailing bars of `index` the paper account must step through.
+
+    Fresh ledger (last_date is None): return `default` (seed with N days of
+    history). Otherwise: return the number of bars strictly after last_date
+    through the latest bar, so a multi-day gap (e.g. the machine was off, or
+    a daily run was skipped) is replayed in full rather than silently
+    skipped — the naive "always step 1 day" approach would jump straight
+    from the old date to the newest one, dropping every day's price move in
+    between from the equity curve. Falls back to 1 if last_date can't be
+    located in the index (e.g. the data was refetched with a different
+    start date) — better to advance one day than raise on a rare edge case.
+    """
+    if last_date is None:
+        return default
+    ts = pd.Timestamp(last_date)
+    if ts.tz is None and index.tz is not None:
+        ts = ts.tz_localize(index.tz)
+    if ts not in index:
+        return 1
+    pos = index.get_loc(ts)
+    return max(len(index) - 1 - pos, 0)
+
+
 class PaperAccount:
     def __init__(self, path: Path = LEDGER_PATH, start_equity: float = 100_000.0):
         self.path = path

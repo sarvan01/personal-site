@@ -42,7 +42,7 @@ from trading_system.regime_test import (
 )
 from trading_system.indicators import realized_vol
 from trading_system.macro import macro_risk_off, synthetic_macro
-from trading_system.paper import PaperAccount
+from trading_system.paper import PaperAccount, days_to_replay
 from trading_system.milkroad import load_milkroad, sample_milkroad
 from trading_system.regime import classify
 from trading_system.risk import asset_weight
@@ -146,7 +146,12 @@ def main() -> int:
     # Replay: walk the last N days through the ledger using each day's own
     # signal/vol/stop values (identical math to a live daily run, replayed).
     account = PaperAccount()
-    n_days = args.replay if account.state["last_date"] is None else 1
+    n_days = days_to_replay(account.state["last_date"], bench.index, args.replay)
+    if n_days > 1:
+        print(f"catching up: replaying {n_days} missed day(s) of paper trading "
+              f"since {account.state['last_date']} ...")
+    elif n_days == 0:
+        print(f"paper account already up to date as of {account.state['last_date']}")
     sig_series, stop_series, vol_series = {}, {}, {}
     for sym, df in ohlc.items():
         sig_series[sym] = trend_signal(df["close"], args.lookback, cfg.trend.exit_divisor)
