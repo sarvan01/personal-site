@@ -12,8 +12,9 @@ The cockpit reads `data/milkroad.json` (if present) and renders the panel.
 No file → no panel (nothing else changes). Three ways to populate it, in
 order of effort:
 
-1. **Free, zero-setup**: `fetch_fear_greed.py` — the Crypto Fear & Greed
-   Index, no login needed.
+1. **Zero-setup**: `fetch_fear_greed.py` — the Crypto Fear & Greed Index, via
+   your CoinStats Premium key (already set up for the archived privacy
+   study) or a free no-login fallback.
 2. **Manual**: copy the sample and edit it by hand.
 3. **Automated from Milk Road PRO**: `fetch_milkroad_indicators.py` — needs a
    short one-time DevTools setup (below).
@@ -52,16 +53,32 @@ trade are shown as extra table columns only when present on at least one
 trade — plain manual/Discord entries without them render the same simple
 table as before.
 
-## Option 1 — free, zero-setup: Crypto Fear & Greed Index
+## Option 1 — Crypto Fear & Greed Index (no DevTools needed)
+
+Fills the `fear_greed` indicator only; run Option 2 below for the other
+three. Two sources, same underlying index (0-100, Extreme Fear..Extreme
+Greed) — this is the same number Milk Road's Crypto Pulse page displays.
+
+**CoinStats (recommended — you already have Premium set up):**
 
 ```powershell
+set COINSTATS_API_KEY=your_key
 python scripts\feeds\fetch_fear_greed.py
 python scripts\cockpit.py --config h1b
 ```
 
-Uses `alternative.me`'s public API — no login, no cookie, no key. This is the
-same number Milk Road's Crypto Pulse page displays. Fills the `fear_greed`
-indicator only; run one of the options below for the other three.
+Uses CoinStats' `/insights/fear-and-greed` endpoint — genuine key-based
+access via the same `COINSTATS_API_KEY` already used for the archived H2
+privacy-coin study, no scraping or cookies involved.
+
+**Free fallback (no key at all):**
+
+```powershell
+python scripts\feeds\fetch_fear_greed.py --source alternative
+python scripts\cockpit.py --config h1b
+```
+
+Uses `alternative.me`'s public API — no login, no cookie, no key.
 
 ## Option 2 — automated from your Milk Road PRO account
 
