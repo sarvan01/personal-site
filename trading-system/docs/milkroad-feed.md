@@ -65,18 +65,60 @@ python scripts\feeds\fetch_milkroad_discord.py --channel <CHANNEL_ID> --limit 40
 
 ### Indicators — `fetch_milkroad_indicators.py`
 
-Skeleton to pull macro-index / macro-pulse / crypto-pulse.
+Pulls macro-index / macro-pulse / crypto-pulse from the **JSON endpoints your
+browser calls** — the pages render client-side, so fetching the raw HTML gets
+nothing. You find those endpoints once via DevTools; the script does the rest.
+
+**Milk Road has no public API**; these pages are premium and behind your
+login. Automated access to a paid product is a Terms-of-Service judgment call
+— you're the account holder, and this pulls only your own subscription's data
+for your own private dashboard, not for redistribution. If in doubt, Milk
+Road's support can confirm whether personal-use automation is acceptable for
+your account.
+
+**Step 1 — find the JSON endpoint + cookie (one-time, per page, ~2 min each):**
+
+1. Open Chrome or Edge, log into milkroad.com.
+2. Go to `https://milkroad.com/data/macro-index/`.
+3. Open DevTools (`F12`), click the **Network** tab, filter to **Fetch/XHR**.
+4. Reload the page (`F5`).
+5. Look through the request list for one whose **Response** (or Preview) tab
+   shows JSON containing the index number/label — often named something with
+   `api`, `index`, `pulse`, or `score` in the URL.
+6. Right-click that request → **Copy → Copy link address** — this is the `url`.
+7. In its **Response** tab, note which key holds the number and which holds
+   any label, e.g. `{"data": {"score": 62, "label": "Risk-On"}}` →
+   `value_path = "data.score"`, `label_path = "data.label"`.
+8. On the **same** request, open the **Headers** tab → *Request Headers* →
+   find `cookie:` → copy its entire value (long string). This is your
+   `MILKROAD_COOKIE`.
+9. Repeat steps 2–7 for `/data/macro-pulse/` and `/data/crypto-pulse/` (the
+   cookie from step 8 is shared across all three — copy it once).
+
+**Step 2 — configure and run:**
 
 ```powershell
-set MILKROAD_COOKIE=your_session_cookie
-python scripts\feeds\fetch_milkroad_indicators.py
+copy scripts\feeds\milkroad_endpoints.sample.json scripts\feeds\milkroad_endpoints.json
+notepad scripts\feeds\milkroad_endpoints.json
+REM paste the 3 URLs + fix value_path/label_path if your JSON shape differs
+
+set MILKROAD_COOKIE=paste_the_long_cookie_string_here
+python scripts\feeds\fetch_milkroad_indicators.py --debug
 ```
 
-- **Milk Road has no public API**; these pages are premium and behind your
-  login. Automated scraping may conflict with Milk Road's Terms — proceed only
-  if you're comfortable it's allowed for your account.
-- Fill in `scrape_value()` — the cleanest route is usually the underlying JSON
-  endpoint (browser Network tab), not HTML parsing.
+`--debug` prints each endpoint's raw JSON — use it to confirm or fix
+`value_path`/`label_path` in the config before relying on the output. Once it
+reports real numbers, drop `--debug` for normal runs:
+
+```powershell
+python scripts\feeds\fetch_milkroad_indicators.py
+python scripts\cockpit.py --config h1b
+```
+
+**Cookies expire** (typically days to weeks) — when the script starts
+reporting HTTP errors, repeat steps 8–9 and update `MILKROAD_COOKIE`.
+`scripts\feeds\milkroad_endpoints.json` is gitignored (it's your personal
+config, not committed).
 
 Both templates **merge** into `data/milkroad.json` without clobbering the other
 section, so you can run Discord for trades and the indicators fetcher for

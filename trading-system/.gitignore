@@ -3,3 +3,6 @@ data/
 out/
 __pycache__/
 .pytest_cache/
+
+# personal Milk Road endpoint config (not secrets, but personal/site-specific)
+scripts/feeds/milkroad_endpoints.json
