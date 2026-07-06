@@ -122,6 +122,17 @@ Claude) and pulls indicators **and** the Analyst Trade Log in one go —
 rather not log in every time. Full walkthrough and ToS notes:
 `docs\milkroad-feed.md`.
 
+## Battle test — run after any material change, and before going live
+
+```powershell
+python scripts\stress_test.py        # real data; writes out\stress_report.json
+```
+
+Stress scenarios (flash crash, worst historical year, ragged data) plus a
+Monte Carlo 1y-forward distribution. The cockpit and Next.js dashboard show
+the report automatically on their next run. Full audit record and the staged
+path to automated trading: `docs\AUTOTRADE_READINESS.md`.
+
 ## The rules (fixed)
 
 - No config changes during the 4 weeks.

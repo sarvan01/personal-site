@@ -50,6 +50,8 @@ export default function Page() {
         </div>
       )}
 
+      {s.decision && <StagePipeline stage={s.decision.stage} line={s.decision.line} />}
+
       <h2>At a glance</h2>
       <div className="grid kpis">
         <Kpi label="Paper equity" value={`$${(s.paper?.equity ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`} sub={`peak $${(s.paper?.peak_equity ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
@@ -97,10 +99,86 @@ export default function Page() {
         </>
       )}
 
+      {s.stress && <StressPanel stress={s.stress} />}
+
       <footer className="muted" style={{ marginTop: 28, fontSize: 11.5 }}>
         Pre-registered rules: docs/trading-system-analysis.md §5–8 · risk policy: RISK_POLICY.md
       </footer>
     </div>
+  );
+}
+
+function StagePipeline({ stage, line }: { stage?: string; line?: string }) {
+  const stages = ["PAPER", "TESTNET", "LIVE"];
+  const idx = stages.indexOf(stage ?? "");
+  const go = (line ?? "").startsWith("GO");
+  return (
+    <div className="card" style={{ marginBottom: 16, borderColor: go ? "#1c6b3f" : "#222a39" }}>
+      <div className="srow" style={{ flexWrap: "wrap", gap: 12 }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          {stages.map((st, i) => (
+            <span key={st} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span
+                className="pill"
+                style={{
+                  background: i < idx ? "#10331f" : i === idx ? (go ? "#10331f" : "#3a2e10") : "#1c2436",
+                  color: i < idx ? "#2ecc71" : i === idx ? (go ? "#2ecc71" : "#f0b400") : "#8b97a8",
+                }}
+              >
+                {i < idx ? "✓ " : ""}
+                {st}
+              </span>
+              {i < stages.length - 1 && <span className="muted">→</span>}
+            </span>
+          ))}
+        </div>
+        <div className={go ? "good" : "warnv"} style={{ fontWeight: 600, fontSize: 13 }}>
+          {line}
+        </div>
+      </div>
+      <div className="muted" style={{ fontSize: 12, marginTop: 8 }}>
+        Automated trading runs via scripts/execute.py behind these gates — this dashboard
+        displays state; it never places orders itself.
+      </div>
+    </div>
+  );
+}
+
+function StressPanel({ stress }: { stress: NonNullable<Status["stress"]> }) {
+  const mc = stress.monte_carlo;
+  const r = mc?.return_1y ?? {};
+  const fc = stress.flash_crash;
+  const wy = stress.worst_year;
+  const pctf = (v?: number) => (v === undefined ? "—" : `${(v * 100).toFixed(1)}%`);
+  return (
+    <>
+      <h2>Battle test — stress &amp; forward distribution</h2>
+      <div className="grid kpis">
+        <Kpi
+          label="Flash crash (-40% day)"
+          value={pctf(fc?.portfolio_loss_on_crash_day)}
+          sub={`gross going in ${pctf(fc?.gross_exposure_going_in)}`}
+          tone={(fc?.portfolio_loss_on_crash_day ?? 0) > -0.1 ? "good" : "warnv"}
+        />
+        <Kpi label="Worst historical year" value={pctf(wy?.net_return)} sub={wy?.window ?? ""} />
+        <Kpi
+          label="1y forward (p5 / p50 / p95)"
+          value={`${pctf(r.p5)} / ${pctf(r.p50)} / ${pctf(r.p95)}`}
+          sub="block-bootstrap of backtest returns"
+        />
+        <Kpi
+          label="P(positive year)"
+          value={pctf(mc?.prob_positive_year)}
+          sub={`P(hit -15% breaker): ${pctf(mc?.prob_dd_exceeds_15pct)}`}
+          tone={(mc?.prob_positive_year ?? 0) > 0.7 ? "good" : ""}
+        />
+      </div>
+      {mc?.caveat && (
+        <div className="muted" style={{ fontSize: 12, marginTop: 8 }}>
+          {mc.caveat}
+        </div>
+      )}
+    </>
   );
 }
 

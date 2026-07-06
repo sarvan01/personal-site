@@ -39,11 +39,26 @@ def test_pre_trade_rejects_oversized_weight(tmp_path):
         ex.plan({"BTCUSDT": 0.50})  # exceeds 25% cap
 
 
-def test_pre_trade_rejects_excess_gross(tmp_path):
+def test_excess_gross_is_scaled_not_rejected(tmp_path):
+    # Behavior changed by audit finding F1: a >100% gross target set is
+    # expected geometry (all assets at their per-asset caps at once) and is
+    # scaled to max_gross exactly as the backtest does -- not refused.
+    b = DryRunBroker({s: 100.0 for s in
+                      ("BTCUSDT", "ETHUSDT", "BNBUSDT", "XRPUSDT", "SOLUSDT")},
+                     state_path=tmp_path / "dry.json", start_usdt=10_000.0)
+    ex = Executor(broker=b, risk=DEFAULT.risk, log_path=tmp_path / "log.json")
+    plans = ex.plan({"BTCUSDT": 0.25, "ETHUSDT": 0.25, "BNBUSDT": 0.25,
+                     "XRPUSDT": 0.25, "SOLUSDT": 0.25})  # sums to 125%
+    assert sum(p.target_weight for p in plans) <= DEFAULT.risk.max_gross + 1e-9
+
+
+def test_pre_trade_checks_backstop_still_rejects_raw_over_gross(tmp_path):
+    # The direct backstop (called with an uncapped set) still fails closed --
+    # it should be unreachable via plan(), which caps first.
     ex = Executor(broker=broker(tmp_path), risk=DEFAULT.risk, log_path=tmp_path / "log.json")
     with pytest.raises(ExecutionError, match="gross"):
-        ex.plan({"BTCUSDT": 0.25, "ETHUSDT": 0.25, "BNBUSDT": 0.25,
-                 "XRPUSDT": 0.25, "SOLUSDT": 0.25})  # sums to 125%
+        ex.pre_trade_checks({"BTCUSDT": 0.25, "ETHUSDT": 0.25, "BNBUSDT": 0.25,
+                             "XRPUSDT": 0.25, "SOLUSDT": 0.25})
 
 
 def test_breaker_flat_sells_to_cash(tmp_path):

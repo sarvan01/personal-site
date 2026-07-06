@@ -57,6 +57,22 @@ def target_weights(
     return weights
 
 
+def cap_gross(targets: dict, max_gross: float) -> tuple[dict, float]:
+    """Layer-2 portfolio cap for dict-shaped targets (the live/paper path).
+
+    Mirrors the proportional scaling target_weights() applies in the
+    vectorized backtest path, so backtest, paper, and live agree on sizing
+    when per-asset weights sum above max_gross (calm markets push every
+    asset toward its individual cap at once -- expected geometry, not a bug).
+    Returns (scaled_targets, scale) where scale <= 1.0.
+    """
+    gross = sum(targets.values())
+    if gross <= max_gross or gross <= 0:
+        return dict(targets), 1.0
+    scale = max_gross / gross
+    return {k: v * scale for k, v in targets.items()}, scale
+
+
 class CircuitBreaker:
     """Stateful drawdown brake, stepped forward one day at a time.
 

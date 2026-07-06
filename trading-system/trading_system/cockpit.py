@@ -302,6 +302,7 @@ def build_cockpit(
     data_mode: str = "synthetic",
     warnings: list | None = None,
     milkroad: dict | None = None,
+    stress: dict | None = None,
     out_dir: Path = OUT_DIR,
 ) -> Path:
     generated = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
@@ -368,6 +369,38 @@ def build_cockpit(
             + _records_table(backtest.get("walk_forward", [])) + "</div>",
         ]
     panels += ["<h2>Risk limits</h2>", "<div class='panel'>" + _kv_table(risk) + "</div>"]
+    if stress:
+        mc = stress.get("monte_carlo", {})
+        r = mc.get("return_1y", {})
+        dd = mc.get("max_drawdown_1y", {})
+        mc_kv = {
+            "1y return p5 / p50 / p95": (
+                f"{r.get('p5', 0):+.1%} / {r.get('p50', 0):+.1%} / {r.get('p95', 0):+.1%}"),
+            "1y max drawdown p50 / p95(worst)": (
+                f"{dd.get('p50', 0):+.1%} / {dd.get('p5', 0):+.1%}"),
+            "P(positive year)": f"{mc.get('prob_positive_year', 0):.0%}",
+            "P(hit -10% breaker)": f"{mc.get('prob_dd_exceeds_10pct', 0):.0%}",
+            "P(hit -15% breaker)": f"{mc.get('prob_dd_exceeds_15pct', 0):.0%}",
+        }
+        fc = stress.get("flash_crash", {})
+        wy = stress.get("worst_year", {})
+        scen_kv = {
+            "flash crash (-40% day): portfolio loss": (
+                f"{fc.get('portfolio_loss_on_crash_day', 0):+.2%} "
+                f"(gross going in {fc.get('gross_exposure_going_in', 0):.1%})"),
+            "worst historical year": (
+                f"{wy.get('net_return', 0):+.2%} ({wy.get('window', '')})"),
+            "ragged-data robustness": (
+                "survived" if stress.get("ragged_data", {}).get("pipeline_survived")
+                else "FAILED"),
+        }
+        panels += [
+            "<h2>Battle test — stress scenarios &amp; forward distribution</h2>",
+            "<div class='panel'>" + _kv_table(scen_kv)
+            + "<h2>Monte Carlo (block-bootstrap of the backtest's own returns)</h2>"
+            + _kv_table(mc_kv)
+            + f"<p class='muted'>{mc.get('caveat', '')}</p></div>",
+        ]
     if reconciliation:
         panels += ["<h2>Cost reconciliation</h2>", "<div class='panel'>" + _kv_table(reconciliation) + "</div>"]
 

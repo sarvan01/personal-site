@@ -133,6 +133,45 @@ class BinanceSpotBroker:
         self.base = TESTNET_BASE if venue == Venue.TESTNET else LIVE_BASE
         self.name = venue.value.upper()
         self._price_cache: dict[str, float] = {}
+        self._filter_cache: dict[str, dict] = {}
+
+    def _filters(self, symbol: str) -> dict:
+        """Per-symbol exchange filters (LOT_SIZE step/min qty, min notional).
+
+        Binance rejects orders whose quantity isn't a multiple of stepSize or
+        whose value is below minNotional -- and these differ per symbol (BTC
+        steps in 0.00001, XRP in whole units). Cached per symbol; degrades to
+        permissive defaults if exchangeInfo is unreachable, in which case the
+        exchange itself remains the final validator.
+        """
+        if symbol in self._filter_cache:
+            return self._filter_cache[symbol]
+        out = {"step_size": 0.0, "min_qty": 0.0, "min_notional": 0.0}
+        try:
+            resp = requests.get(f"{self.base}/api/v3/exchangeInfo",
+                                params={"symbol": symbol}, timeout=15)
+            if resp.status_code == 200:
+                for f in resp.json()["symbols"][0]["filters"]:
+                    if f["filterType"] == "LOT_SIZE":
+                        out["step_size"] = float(f["stepSize"])
+                        out["min_qty"] = float(f["minQty"])
+                    elif f["filterType"] in ("NOTIONAL", "MIN_NOTIONAL"):
+                        out["min_notional"] = float(
+                            f.get("minNotional", f.get("notional", 0.0)))
+        except (requests.RequestException, KeyError, IndexError, ValueError):
+            print(f"warning: exchangeInfo unavailable for {symbol}; "
+                  "using permissive lot sizing (exchange will validate)")
+        self._filter_cache[symbol] = out
+        return out
+
+    @staticmethod
+    def _quantize(qty: float, step: float) -> float:
+        """Floor qty to a multiple of step (Binance rejects anything else)."""
+        if step <= 0:
+            return round(qty, 8)
+        # int() floors toward zero; add a tiny epsilon so a qty that is
+        # already an exact multiple isn't knocked down a step by float error.
+        return int(qty / step + 1e-9) * step
 
     def _signed(self, method: str, path: str, params: dict) -> dict:
         params = dict(params)
@@ -180,12 +219,22 @@ class BinanceSpotBroker:
         return eq
 
     def market_order(self, symbol: str, side: str, notional: float) -> dict:
+        filters = self._filters(symbol)
+        if filters["min_notional"] and notional < filters["min_notional"]:
+            raise ExecutionError(
+                f"{symbol}: notional ${notional:.2f} below exchange minimum "
+                f"${filters['min_notional']:.2f} -- skipping")
         params = {"symbol": symbol, "side": side, "type": "MARKET"}
         if side == "BUY":
             params["quoteOrderQty"] = round(notional, 2)
         else:
-            qty = notional / self.price(symbol)
-            params["quantity"] = round(qty, 5)  # simplified lot sizing
+            qty = self._quantize(notional / self.price(symbol), filters["step_size"])
+            if qty <= 0 or (filters["min_qty"] and qty < filters["min_qty"]):
+                raise ExecutionError(
+                    f"{symbol}: quantized qty {qty} below exchange minimum "
+                    f"{filters['min_qty']} -- skipping")
+            # Format without scientific notation; trim trailing zeros.
+            params["quantity"] = f"{qty:.8f}".rstrip("0").rstrip(".")
         return self._signed("POST", "/api/v3/order", params)
 
 
@@ -201,7 +250,15 @@ class Executor:
     log_path: Path = field(default=EXECUTION_LOG)
 
     def pre_trade_checks(self, targets: dict[str, float]) -> None:
-        """Reject a target set that violates the risk policy BEFORE any order."""
+        """Reject a target set that violates the risk policy BEFORE any order.
+
+        Per-asset violations and negative weights indicate an upstream bug and
+        fail closed. A gross overflow is NOT rejected here -- it is expected
+        geometry (every asset can hit its individual cap at once in calm
+        markets) and plan() scales it to max_gross exactly as the backtest
+        does; the gross check below is only a backstop that should never fire
+        after that scaling.
+        """
         for sym, w in targets.items():
             if w < 0:
                 raise ExecutionError(f"{sym}: negative target weight {w} (no shorting)")
@@ -210,17 +267,25 @@ class Executor:
                     f"{sym}: target {w:.1%} exceeds max_asset_weight "
                     f"{self.risk.max_asset_weight:.1%}")
         gross = sum(targets.values())
-        if gross > self.risk.max_gross + 1e-9:
+        if gross > self.risk.max_gross + 1e-6:
             raise ExecutionError(
-                f"gross exposure {gross:.1%} exceeds max_gross {self.risk.max_gross:.1%}")
+                f"gross exposure {gross:.1%} exceeds max_gross after capping -- "
+                "upstream sizing bug, refusing to trade")
 
     def plan(self, targets: dict[str, float]) -> list[OrderPlan]:
         """Diff desired weights against current holdings -> order plans.
 
-        Targets are scaled by the circuit-breaker first: if the breaker is
-        flat (scale 0), every target becomes 0 and the system sells to cash.
+        Targets are scaled by the circuit-breaker first (breaker flat => all
+        targets 0 => sells to cash), then by the portfolio gross cap
+        (proportional, mirroring the backtest's target_weights).
         """
+        from .risk import cap_gross
+
         scaled = {s: w * self.breaker_scale for s, w in targets.items()}
+        scaled, gross_scale = cap_gross(scaled, self.risk.max_gross)
+        if gross_scale < 1.0:
+            print(f"gross cap applied: targets scaled by {gross_scale:.3f} "
+                  f"to fit max_gross {self.risk.max_gross:.0%}")
         self.pre_trade_checks(scaled)
         equity = self.broker.equity()
         if equity <= 0:
@@ -254,7 +319,14 @@ class Executor:
             if dry_preview:
                 results.append({**p.as_dict(), "status": "preview"})
                 continue
-            fill = self.broker.market_order(p.symbol, p.side, p.notional)
+            try:
+                fill = self.broker.market_order(p.symbol, p.side, p.notional)
+            except ExecutionError as exc:
+                # One symbol's dust/min-notional skip must not abort the
+                # rest of the day's rebalance; record it and continue.
+                print(f"  {p.symbol}: order skipped ({exc})")
+                results.append({**p.as_dict(), "status": "skipped", "error": str(exc)})
+                continue
             results.append({**p.as_dict(), "status": "filled", "fill": fill})
         record = {
             "ts": int(time.time()),

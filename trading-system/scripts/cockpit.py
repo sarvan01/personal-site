@@ -46,12 +46,34 @@ from trading_system.paper import PaperAccount, days_to_replay
 from trading_system.milkroad import load_milkroad, sample_milkroad
 from trading_system.regime import classify
 from trading_system.risk import asset_weight
-from trading_system.signals import latest_targets
+from trading_system.signals import latest_targets, replay_targets
 from trading_system.strategy import stop_distance, trend_signal
 
 PASS_MIN_SHARPE = 0.7
 PASS_MAX_DD = -0.35
 EVENTS_CSV = ROOT / "research" / "privacy_events.csv"
+STRESS_REPORT = ROOT / "out" / "stress_report.json"
+MIN_PAPER_DAYS = 20
+
+
+def decision_stage(gate: bool, synthetic: bool, paper_days: int, recon: dict):
+    """Stage-aware go/no-go: PAPER -> TESTNET -> LIVE. Fixes the earlier memo
+    that claimed to require four conditions but only checked two."""
+    if synthetic:
+        return "DEMO", "NO-GO (synthetic data is never decision-grade)"
+    if not gate:
+        return "PAPER", "NO-GO (backtest gate FAIL -- do not retune; diagnose)"
+    if paper_days < MIN_PAPER_DAYS:
+        return "PAPER", (f"NO-GO (paper clock at {paper_days}/{MIN_PAPER_DAYS} "
+                         "clean days)")
+    if recon.get("n_with_observed_costs", 0) == 0:
+        return "TESTNET", ("GO to TESTNET (paper complete; live still blocked "
+                           "until testnet fills show costs within 1.5x of "
+                           "assumptions)")
+    if recon.get("within_kill_criterion"):
+        return "LIVE", "GO to LIVE at 10% of target size (all gates passed)"
+    return "TESTNET", ("NO-GO for live (observed costs exceed 1.5x assumptions "
+                       "-- kill criterion; diagnose slippage before proceeding)")
 
 
 def load_inputs(synthetic: bool, cfg):
@@ -121,6 +143,14 @@ def main() -> int:
     # renders in the demo.
     milkroad = sample_milkroad() if args.synthetic else load_milkroad()
 
+    # Stress/Monte-Carlo report (written by scripts/stress_test.py).
+    stress = None
+    if STRESS_REPORT.exists():
+        try:
+            stress = json.loads(STRESS_REPORT.read_text())
+        except (json.JSONDecodeError, OSError):
+            stress = None
+
     # --- regime (with macro composite when available) -----------------------
     bench = ohlc[cfg.benchmark]["close"]
     risk_off = macro_risk_off(*macro, index=bench.index) if any(m is not None for m in macro) else None
@@ -152,30 +182,7 @@ def main() -> int:
               f"since {account.state['last_date']} ...")
     elif n_days == 0:
         print(f"paper account already up to date as of {account.state['last_date']}")
-    sig_series, stop_series, vol_series = {}, {}, {}
-    for sym, df in ohlc.items():
-        sig_series[sym] = trend_signal(df["close"], args.lookback, cfg.trend.exit_divisor)
-        stop_series[sym] = stop_distance(df["high"], df["low"], df["close"], cfg.trend)
-        vol_series[sym] = realized_vol(df["close"], cfg.regime.vol_window)
-    for i in range(-n_days, 0):
-        day = bench.index[i]
-        closes = {s: float(df["close"].loc[day]) for s, df in ohlc.items()}
-        prev_closes = {
-            s: float(df["close"].iloc[df.index.get_loc(day) - 1]) for s, df in ohlc.items()
-        }
-        mult = float(regime_df["multiplier"].loc[day])
-        targets = {
-            s: asset_weight(
-                float(sig_series[s].loc[day]),
-                float(vol_series[s].loc[day]),
-                closes[s],
-                float(stop_series[s].loc[day]),
-                cfg.risk,
-            )
-            * mult
-            for s in ohlc
-        }
-        account.step(str(day.date()), closes, prev_closes, targets, cfg)
+    replay_targets(ohlc, cfg, args.lookback, n_days, account)
     account.save()
 
     # --- backtest grid + walk-forward ----------------------------------------
@@ -237,6 +244,7 @@ def main() -> int:
         data_mode="synthetic" if args.synthetic else "real",
         warnings=data_warnings,
         milkroad=milkroad,
+        stress=stress,
     )
 
     status = {
@@ -253,23 +261,33 @@ def main() -> int:
         "event_study": event_study,
         "regime_tests": regime_tests,
         "milkroad": milkroad,
+        "stress": stress,
         "generated_utc": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
     }
     (ROOT / "out" / "status.json").write_text(json.dumps(status, indent=2, default=str))
 
+    recon = account.reconciliation()
+    stage, decision_line = decision_stage(
+        gate=gate, synthetic=args.synthetic,
+        paper_days=len(equity_history), recon=recon)
     memo = [
         "# Go / No-Go Decision Memo",
         "",
         f"- Data mode: {'SYNTHETIC (not decision-grade)' if args.synthetic else 'real'}",
         f"- Pre-registered backtest gate: {'PASS' if gate else 'FAIL'}",
         f"- Paper-trading days recorded: {len(equity_history)} (need >= 20 clean days)",
-        f"- Cost reconciliation fills observed: {account.reconciliation()['n_with_observed_costs']}",
+        f"- Testnet/live fills with observed costs: {recon['n_with_observed_costs']}",
+        f"- Observed costs within 1.5x of assumptions: "
+        f"{recon.get('within_kill_criterion', 'n/a (no observed fills yet)')}",
         "",
-        "Live capital requires ALL of: real-data gate PASS, 4 clean paper weeks,",
-        "observed costs within 1.5x of assumptions, zero manual overrides.",
-        "Decision: GO" if gate and not args.synthetic and len(equity_history) >= 20 else "Decision: NO-GO (conditions above not yet met)",
+        "Stages: PAPER -> TESTNET -> LIVE-at-10%-size. Each stage's gate must",
+        "pass before the next; manual overrides reset the paper clock.",
+        f"Stage: {stage}",
+        f"Decision: {decision_line}",
     ]
     (ROOT / "out" / "decision_memo.md").write_text("\n".join(memo) + "\n")
+    status["decision"] = {"stage": stage, "line": decision_line}
+    (ROOT / "out" / "status.json").write_text(json.dumps(status, indent=2, default=str))
 
     print(f"cockpit  -> {path}")
     print(f"status   -> {ROOT / 'out' / 'status.json'}")
