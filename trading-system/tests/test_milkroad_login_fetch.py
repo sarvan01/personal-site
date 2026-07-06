@@ -177,7 +177,13 @@ def test_load_required_config_missing_file_raises(tmp_path):
 # --------------------------------------------------------------------------
 # main() -- end to end with everything mocked, isolated from real files
 # --------------------------------------------------------------------------
+def _real_file_state():
+    p = Path(__file__).resolve().parent.parent / "data" / "milkroad.json"
+    return p.read_bytes() if p.exists() else None
+
+
 def test_main_end_to_end(tmp_path, monkeypatch, capsys):
+    real_before = _real_file_state()
     login_cfg_path = tmp_path / "login.json"
     login_cfg_path.write_text(
         '{"login_url": "https://milkroad.com/api/login", "email_field": "email", '
@@ -206,7 +212,10 @@ def test_main_end_to_end(tmp_path, monkeypatch, capsys):
     assert data["indicators"]["macro_index"]["value"] == 1
     assert data["source"] == "milkroad.com"
     assert "hunter2" not in capsys.readouterr().out
-    assert not (Path(__file__).resolve().parent.parent / "data" / "milkroad.json").exists()
+    # The real data/milkroad.json may legitimately exist on a user's
+    # machine; assert the test did not CREATE or MODIFY it (guard
+    # against the write-redirection monkeypatch silently breaking).
+    assert _real_file_state() == real_before
 
 
 def test_main_reports_login_error_cleanly(tmp_path, monkeypatch, capsys):

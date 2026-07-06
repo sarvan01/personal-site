@@ -78,7 +78,13 @@ def test_fetch_coinstats_http_error_raises(monkeypatch):
             fetch_fear_greed.fetch_coinstats()
 
 
+def _real_file_state():
+    p = Path(__file__).resolve().parent.parent / "data" / "milkroad.json"
+    return p.read_bytes() if p.exists() else None
+
+
 def test_main_writes_to_milkroad_json(tmp_path, monkeypatch):
+    real_before = _real_file_state()
     # write_milkroad/load_milkroad are bound into fetch_fear_greed's namespace
     # at import time with MILKROAD_PATH as their default `path` argument, so
     # patching the trading_system.milkroad module attribute after the fact
@@ -97,7 +103,10 @@ def test_main_writes_to_milkroad_json(tmp_path, monkeypatch):
     data = load_milkroad(out_path)
     assert data["indicators"]["fear_greed"]["value"] == 19
     assert data["source"] == "alternative"
-    assert not (Path(__file__).resolve().parent.parent / "data" / "milkroad.json").exists()
+    # The real data/milkroad.json may legitimately exist on a user's
+    # machine; assert the test did not CREATE or MODIFY it (guard
+    # against the write-redirection monkeypatch silently breaking).
+    assert _real_file_state() == real_before
 
 
 def test_main_reports_fetch_error_cleanly(monkeypatch, capsys):
