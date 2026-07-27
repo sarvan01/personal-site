@@ -138,3 +138,32 @@ def test_f2_replay_survives_missing_bar(tmp_path, monkeypatch):
     assert n == 30
     assert account.state["last_date"] is not None
     assert len(account.state["history"]) == 30
+
+
+# ---------------------------------------------------------------------------
+# F10 -- walk-forward windows must slice by DATE, not row position
+# ---------------------------------------------------------------------------
+def test_f10_walk_forward_does_not_blend_eras():
+    """A short-history symbol must contribute NOTHING to windows before its
+    listing date. Under the positional-slicing bug, its later-era rows were
+    pulled into early windows, changing their metrics."""
+    from trading_system.backtest import walk_forward
+
+    btc = synthetic_klines(days=2000, seed=7)
+    # SOL-like: exists only for the last 900 days, with a huge early rally
+    # (inside ITS first rows) that must never leak into 2019-era windows.
+    sol_full = synthetic_klines(days=2000, seed=9)
+    sol = sol_full.iloc[-900:].copy()
+    sol.loc[sol.index[:100], ["open", "high", "low", "close"]] *= 5.0
+
+    with_sol = walk_forward({"BTCUSDT": btc, "SOLUSDT": sol}, DEFAULT, lookback=100)
+    btc_only = walk_forward({"BTCUSDT": btc}, DEFAULT, lookback=100)
+
+    # Window 1 predates SOL's listing entirely: identical with or without SOL.
+    assert with_sol.iloc[0]["from"] == btc_only.iloc[0]["from"]
+    assert with_sol.iloc[0]["total_return"] == pytest.approx(
+        btc_only.iloc[0]["total_return"], abs=1e-12), (
+        "early window changed when a later-listed symbol was added -- "
+        "positional slicing is blending eras again")
+    # Window labels come from the benchmark calendar and stay ordered.
+    assert list(with_sol["from"]) == sorted(with_sol["from"])

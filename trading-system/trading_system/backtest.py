@@ -118,21 +118,32 @@ def walk_forward(
     lookback: int,
     window_years: int = 2,
 ) -> pd.DataFrame:
-    """Net performance in each rolling out-of-sample window."""
-    any_df = next(iter(ohlc.values()))
-    index = any_df.index
+    """Net performance in each rolling out-of-sample window.
+
+    Windows are sliced by DATE on the benchmark calendar, not by row
+    position: with mixed-history universes (SOL lists in 2020, BTC in 2017),
+    positional slicing silently pulled later-era rows of short-history
+    symbols into early windows, blending periods (audit finding F10). A
+    symbol with no data inside a window is simply absent from that window.
+    """
+    bench_index = ohlc[cfg.benchmark].index
     window = window_years * TRADING_DAYS
     rows = []
     start = 0
-    while start + window // 2 < len(index):
-        end = min(start + window, len(index))
-        chunk = {s: df.iloc[start:end] for s, df in ohlc.items()}
-        if end - start > lookback * 2:
+    while start + window // 2 < len(bench_index):
+        end = min(start + window, len(bench_index))
+        d0, d1 = bench_index[start], bench_index[end - 1]
+        chunk = {}
+        for s, df in ohlc.items():
+            sub = df.loc[d0:d1]
+            if len(sub):
+                chunk[s] = sub
+        if end - start > lookback * 2 and cfg.benchmark in chunk:
             m = run_backtest(chunk, cfg, lookback).metrics
             rows.append(
                 {
-                    "from": str(index[start].date()),
-                    "to": str(index[end - 1].date()),
+                    "from": str(d0.date()),
+                    "to": str(d1.date()),
                     **{k: m[k] for k in ("total_return", "sharpe", "max_drawdown")},
                 }
             )
