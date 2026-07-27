@@ -141,6 +141,25 @@ class PaperAccount:
         self.path.write_text(json.dumps(self.state, indent=2))
         return self.path
 
+    def record_external_fill(self, date: str, symbol: str, side: str,
+                             notional: float, fill_price: float | None,
+                             observed_bps: float, assumed_bps: float,
+                             source: str = "testnet") -> None:
+        """Record a REAL (testnet/live) fill's observed cost so the
+        reconciliation that gates LIVE can actually accumulate evidence --
+        without this bridge, 'observed fills' stayed at 0 forever."""
+        self.state["fills"].append({
+            "date": date,
+            "symbol": symbol,
+            "side": side,
+            "weight_change": 0.0,  # external fill: not part of paper P&L
+            "notional": round(float(notional), 2),
+            "fill_price": fill_price,
+            "assumed_cost_bps_per_side": float(assumed_bps),
+            "observed_cost_bps_per_side": round(float(observed_bps), 3),
+            "source": source,
+        })
+
     def reconciliation(self) -> dict:
         """Assumed vs. observed costs across fills (observed comes from
         testnet/live execution later; until then this reports coverage)."""

@@ -28,7 +28,13 @@ sys.path.insert(0, str(ROOT))
 
 from trading_system.config import CONFIGS
 from trading_system.data import DataError, load_klines
-from trading_system.execution import Executor, Venue, make_broker, ExecutionError
+from trading_system.execution import (
+    ExecutionError,
+    Executor,
+    Venue,
+    make_broker,
+    observed_cost_bps,
+)
 from trading_system.paper import PaperAccount
 from trading_system.signals import latest_targets
 
@@ -91,6 +97,31 @@ def main() -> int:
     print(f"mode: {mode}  | logged to out/execution_log.json")
     if venue != Venue.DRY and not args.execute:
         print("re-run with --execute to actually place these orders")
+
+    # Reconciliation bridge: real (testnet/live) fills feed their observed
+    # costs into the paper ledger, which is what the LIVE gate reads.
+    if args.execute and venue != Venue.DRY:
+        assumed_bps = cfg.costs.cost_per_side * 10_000
+        recorded = 0
+        for o in record["orders"]:
+            if o.get("status") != "filled":
+                continue
+            bps = observed_cost_bps(o["symbol"], o.get("price"), o.get("fill"))
+            if bps is None:
+                continue
+            account.record_external_fill(
+                date=regime["as_of"], symbol=o["symbol"], side=o["side"],
+                notional=o["notional"], fill_price=o.get("price"),
+                observed_bps=bps, assumed_bps=assumed_bps,
+                source=venue.value)
+            recorded += 1
+        if recorded:
+            account.save()
+            recon = account.reconciliation()
+            print(f"reconciliation: +{recorded} observed fill(s); "
+                  f"avg observed {recon.get('avg_observed_cost_bps_per_side', 0):.1f} bps "
+                  f"vs assumed {assumed_bps:.0f} bps; "
+                  f"within kill criterion: {recon.get('within_kill_criterion')}")
     return 0
 
 

@@ -99,7 +99,7 @@ class DryRunBroker:
     def holdings(self) -> dict[str, float]:
         return {k: v for k, v in self.state.items() if k != "USDT"}
 
-    def equity(self) -> float:
+    def equity(self, relevant_bases: set | None = None) -> float:
         eq = self.state.get("USDT", 0.0)
         for base, qty in self.holdings().items():
             eq += qty * self.prices.get(base + "USDT", 0.0)
@@ -133,6 +133,7 @@ class BinanceSpotBroker:
         self.base = TESTNET_BASE if venue == Venue.TESTNET else LIVE_BASE
         self.name = venue.value.upper()
         self._price_cache: dict[str, float] = {}
+        self._balances_cache: dict[str, float] | None = None
         self._filter_cache: dict[str, dict] = {}
 
     def _filters(self, symbol: str) -> dict:
@@ -186,36 +187,63 @@ class BinanceSpotBroker:
             raise ExecutionError(f"{method} {path} -> {resp.status_code}: {resp.text}")
         return resp.json()
 
+    def _all_prices(self) -> dict[str, float]:
+        """ALL tickers in ONE request, cached for this run. The per-asset
+        price loop this replaces made one serial HTTP call per held asset --
+        on testnet (slow API + ~10 pre-funded play assets) that looked like a
+        hang."""
+        if not self._price_cache:
+            resp = requests.get(f"{self.base}/api/v3/ticker/price", timeout=20)
+            if resp.status_code != 200:
+                raise ExecutionError(f"batch prices: HTTP {resp.status_code}")
+            self._price_cache = {d["symbol"]: float(d["price"])
+                                 for d in resp.json()}
+        return self._price_cache
+
     def price(self, symbol: str) -> float:
+        try:
+            p = self._all_prices().get(symbol)
+            if p is not None:
+                return p
+        except ExecutionError:
+            pass  # batch endpoint hiccup: fall through to a single lookup
         resp = requests.get(f"{self.base}/api/v3/ticker/price",
                             params={"symbol": symbol}, timeout=15)
         if resp.status_code != 200:
             raise ExecutionError(f"price {symbol}: {resp.text}")
-        p = float(resp.json()["price"])
-        self._price_cache[symbol] = p
-        return p
+        return float(resp.json()["price"])
 
     def _balances(self) -> dict[str, float]:
-        acct = self._signed("GET", "/api/v3/account", {})
-        return {
-            b["asset"]: float(b["free"]) + float(b["locked"])
-            for b in acct["balances"]
-            if float(b["free"]) + float(b["locked"]) > 0
-        }
+        if self._balances_cache is None:
+            acct = self._signed("GET", "/api/v3/account", {})
+            self._balances_cache = {
+                b["asset"]: float(b["free"]) + float(b["locked"])
+                for b in acct["balances"]
+                if float(b["free"]) + float(b["locked"]) > 0
+            }
+        return self._balances_cache
 
     def holdings(self) -> dict[str, float]:
         return {k: v for k, v in self._balances().items() if k != "USDT"}
 
-    def equity(self) -> float:
+    def equity(self, relevant_bases: set | None = None) -> float:
+        """Account equity in USDT terms.
+
+        relevant_bases scopes the calculation to the assets the system
+        actually manages (its universe) plus USDT -- pre-funded testnet play
+        assets the system will never trade (LTC, TRX, ...) would otherwise
+        inflate the denominator and shrink every target weight."""
         bals = self._balances()
+        prices = self._all_prices()
         eq = bals.get("USDT", 0.0)
         for asset, qty in bals.items():
             if asset == "USDT":
                 continue
-            try:
-                eq += qty * self.price(asset + "USDT")
-            except ExecutionError:
-                continue  # asset without a USDT pair; ignore
+            if relevant_bases is not None and asset not in relevant_bases:
+                continue
+            p = prices.get(asset + "USDT")
+            if p:
+                eq += qty * p
         return eq
 
     def market_order(self, symbol: str, side: str, notional: float) -> dict:
@@ -287,7 +315,8 @@ class Executor:
             print(f"gross cap applied: targets scaled by {gross_scale:.3f} "
                   f"to fit max_gross {self.risk.max_gross:.0%}")
         self.pre_trade_checks(scaled)
-        equity = self.broker.equity()
+        bases = {s.replace("USDT", "") for s in scaled}
+        equity = self.broker.equity(relevant_bases=bases)
         if equity <= 0:
             raise ExecutionError("non-positive equity; refusing to trade")
         holdings = self.broker.holdings()
@@ -374,3 +403,40 @@ def make_broker(venue: Venue, prices: dict | None = None,
                 "LIVE blocked: pass --i-understand-live to confirm real-money orders")
 
     return BinanceSpotBroker(venue, key, secret)
+
+
+def observed_cost_bps(symbol: str, expected_price: float, order_response: dict) -> float | None:
+    """Realized per-side cost in bps for a filled Binance order: slippage of
+    the fill VWAP vs the pre-trade reference price, plus commissions.
+
+    This is what feeds the reconciliation that gates LIVE -- the kill
+    criterion retires the strategy if observed costs exceed 1.5x the assumed
+    25 bps/side. Returns None when the response carries no fill details
+    (e.g. dry-run simulations). Commission paid in an asset other than USDT
+    or the symbol's base (e.g. BNB fee discount) is skipped, slightly
+    UNDERSTATING cost -- acceptable because the assumed figure is already
+    deliberately pessimistic.
+    """
+    fills = (order_response or {}).get("fills") or []
+    if not fills or not expected_price or expected_price <= 0:
+        return None
+    qty = sum(float(f.get("qty", 0)) for f in fills)
+    if qty <= 0:
+        return None
+    vwap = sum(float(f["price"]) * float(f["qty"]) for f in fills) / qty
+    notional = vwap * qty
+    slippage = abs(vwap - expected_price) / expected_price
+
+    base = symbol.replace("USDT", "")
+    commission_usdt = 0.0
+    for f in fills:
+        c = float(f.get("commission", 0) or 0)
+        if c <= 0:
+            continue
+        asset = f.get("commissionAsset", "")
+        if asset == "USDT":
+            commission_usdt += c
+        elif asset == base:
+            commission_usdt += c * vwap
+    commission_frac = commission_usdt / notional if notional > 0 else 0.0
+    return (slippage + commission_frac) * 10_000
