@@ -72,6 +72,17 @@ Order execution is built and risk-checked but **off by default**. Path:
    python scripts/execute.py --config h1b --venue testnet --execute  # send to testnet
    ```
 
+   **Key hygiene (non-negotiable, practice it on testnet):** keys live ONLY
+   in your environment variables. Never paste them into chats, files, or
+   configs; if a key is ever exposed anywhere, regenerate it immediately.
+
+   For daily automation in the testnet stage, point the scheduler at
+   **`daily_testnet.bat`** instead of `daily.bat` — it runs the normal paper
+   flow, then places the day's orders on testnet. It cannot trade real money
+   (venue hardcoded to testnet; live needs ALLOW_LIVE_TRADING plus an
+   explicit flag it never passes). Expect "no orders" on flat days — that is
+   correct behavior, not a failure.
+
 3. **Live (real money) — two independent gates:**
    ```powershell
    setx ALLOW_LIVE_TRADING yes
