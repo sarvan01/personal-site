@@ -446,5 +446,7 @@ def build_cockpit(
 
     out_dir.mkdir(parents=True, exist_ok=True)
     path = out_dir / "cockpit.html"
-    path.write_text(html)
+    # Explicit UTF-8: Windows' default locale encoding (cp1252) would garble
+    # the em-dashes into replacement characters despite the utf-8 meta tag.
+    path.write_text(html, encoding="utf-8")
     return path

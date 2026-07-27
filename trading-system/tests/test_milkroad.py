@@ -139,3 +139,16 @@ def test_trades_table_omits_optional_columns_when_absent(tmp_path):
     html = path.read_text()
     assert "<th>analyst</th>" not in html
     assert "<th>perf</th>" not in html
+
+
+def test_cockpit_html_is_valid_utf8_with_em_dashes(tmp_path):
+    # Windows locale default (cp1252) garbled the em-dashes into replacement
+    # chars in the browser; the file must be explicit UTF-8.
+    path = build_cockpit(
+        regime={"state": "chop", "exposure_multiplier": 0.5},
+        signals={}, carry={"signal": "OUT"}, risk={},
+        data_mode="synthetic", out_dir=tmp_path,
+    )
+    raw = path.read_bytes()
+    assert "—".encode("utf-8") in raw  # em-dash present as proper UTF-8 bytes
+    raw.decode("utf-8")  # decodes cleanly
