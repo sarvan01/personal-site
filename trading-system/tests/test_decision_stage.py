@@ -46,3 +46,12 @@ def test_testnet_costs_exceeding_kill_criterion_blocks_live():
                                  recon={"n_with_observed_costs": 12,
                                         "within_kill_criterion": False})
     assert stage == "TESTNET" and "kill criterion" in line
+
+
+def test_one_fill_is_not_enough_for_live():
+    # A single trivial fill (e.g. flattening pre-funded testnet balances)
+    # must NOT unlock LIVE -- evidence accumulates to MIN_OBSERVED_FILLS.
+    stage, line = decision_stage(gate=True, synthetic=False, paper_days=25,
+                                 recon={"n_with_observed_costs": 1,
+                                        "within_kill_criterion": True})
+    assert stage == "TESTNET" and "1/5 observed fills" in line

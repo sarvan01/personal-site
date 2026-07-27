@@ -54,6 +54,7 @@ PASS_MAX_DD = -0.35
 EVENTS_CSV = ROOT / "research" / "privacy_events.csv"
 STRESS_REPORT = ROOT / "out" / "stress_report.json"
 MIN_PAPER_DAYS = 20
+MIN_OBSERVED_FILLS = 5
 
 
 def decision_stage(gate: bool, synthetic: bool, paper_days: int, recon: dict):
@@ -66,12 +67,19 @@ def decision_stage(gate: bool, synthetic: bool, paper_days: int, recon: dict):
     if paper_days < MIN_PAPER_DAYS:
         return "PAPER", (f"NO-GO (paper clock at {paper_days}/{MIN_PAPER_DAYS} "
                          "clean days)")
-    if recon.get("n_with_observed_costs", 0) == 0:
+    n_fills = recon.get("n_with_observed_costs", 0)
+    if n_fills == 0:
         return "TESTNET", ("GO to TESTNET (paper complete; live still blocked "
                            "until testnet fills show costs within 1.5x of "
                            "assumptions)")
+    if n_fills < MIN_OBSERVED_FILLS:
+        return "TESTNET", (f"GO to TESTNET ({n_fills}/{MIN_OBSERVED_FILLS} observed "
+                           "fills -- one trade is not evidence; keep the testnet "
+                           "loop running until real signal-driven fills accumulate)")
     if recon.get("within_kill_criterion"):
-        return "LIVE", "GO to LIVE at 10% of target size (all gates passed)"
+        return "LIVE", ("GO to LIVE at 10% of target size (all gates passed; "
+                        "note testnet costs understate live -- the kill "
+                        "criterion keeps watching after go-live)")
     return "TESTNET", ("NO-GO for live (observed costs exceed 1.5x assumptions "
                        "-- kill criterion; diagnose slippage before proceeding)")
 
