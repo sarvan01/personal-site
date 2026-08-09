@@ -22,6 +22,7 @@ clear both gates. Testnet-first is the intended path.
 import hashlib
 import hmac
 import json
+import sys
 import time
 from dataclasses import dataclass, field
 from enum import Enum
@@ -42,6 +43,12 @@ LIVE_BASE = "https://api.binance.com"
 # Minimum order value Binance accepts (USDT). Deltas smaller than the
 # rebalance band below are skipped to avoid churning dust.
 MIN_NOTIONAL = 10.0
+
+# Signed-request timing. Binance rejects timestamps AHEAD of server time
+# (-1021); recvWindow only tolerates late arrivals, so we aim slightly
+# behind exchange time and allow a generous window for latency.
+RECV_WINDOW_MS = 10_000
+TIME_SAFETY_MS = 500
 
 
 class Venue(str, Enum):
@@ -134,6 +141,7 @@ class BinanceSpotBroker:
         self.name = venue.value.upper()
         self._price_cache: dict[str, float] = {}
         self._balances_cache: dict[str, float] | None = None
+        self._time_offset: int | None = None
         self._filter_cache: dict[str, dict] = {}
 
     def _filters(self, symbol: str) -> dict:
@@ -174,16 +182,55 @@ class BinanceSpotBroker:
         # already an exact multiple isn't knocked down a step by float error.
         return int(qty / step + 1e-9) * step
 
-    def _signed(self, method: str, path: str, params: dict) -> dict:
+    def _sync_time(self) -> int:
+        """Offset (ms) between the exchange's clock and this machine's.
+
+        Binance rejects any signed request whose timestamp is AHEAD of server
+        time (error -1021) -- and recvWindow does NOT help, since it only
+        tolerates requests arriving late. An unattended daily job on a PC
+        whose clock drifts by a second would otherwise fail every run, so we
+        stamp requests in exchange time rather than local time.
+        """
+        try:
+            resp = requests.get(f"{self.base}/api/v3/time", timeout=15)
+            if resp.status_code == 200:
+                local_ms = int(time.time() * 1000)
+                self._time_offset = int(resp.json()["serverTime"]) - local_ms
+                if abs(self._time_offset) > 2000:
+                    print(f"note: local clock differs from exchange by "
+                          f"{self._time_offset} ms; using exchange time. "
+                          "Consider syncing Windows time (w32tm /resync).")
+                return self._time_offset
+        except (requests.RequestException, KeyError, ValueError) as exc:
+            print(f"warning: could not sync exchange time ({exc}); "
+                  "using local clock", file=sys.stderr)
+        self._time_offset = 0
+        return 0
+
+    def _signed(self, method: str, path: str, params: dict,
+                _retry: bool = True) -> dict:
+        if self._time_offset is None:
+            self._sync_time()
         params = dict(params)
-        params["timestamp"] = int(time.time() * 1000)
-        params["recvWindow"] = 5000
+        # Stamp in exchange time, minus a small safety margin: being slightly
+        # BEHIND is absorbed by recvWindow, being ahead is fatal.
+        params["timestamp"] = int(time.time() * 1000) + self._time_offset - TIME_SAFETY_MS
+        params["recvWindow"] = RECV_WINDOW_MS
         query = urlencode(params)
         sig = hmac.new(self.secret.encode(), query.encode(), hashlib.sha256).hexdigest()
         url = f"{self.base}{path}?{query}&signature={sig}"
         headers = {"X-MBX-APIKEY": self.key}
         resp = requests.request(method, url, headers=headers, timeout=15)
         if resp.status_code != 200:
+            # -1021 = timestamp outside the accepted window. Clocks can drift
+            # mid-run (or the cached offset went stale); resync once and retry
+            # before failing the day's execution.
+            if _retry and '-1021' in resp.text:
+                print("timestamp rejected (-1021); resyncing exchange time and retrying")
+                self._sync_time()
+                clean = {k: v for k, v in params.items()
+                         if k not in ("timestamp", "recvWindow")}
+                return self._signed(method, path, clean, _retry=False)
             raise ExecutionError(f"{method} {path} -> {resp.status_code}: {resp.text}")
         return resp.json()
 
