@@ -196,14 +196,33 @@ def _signal_cards(signals: dict) -> str:
         on = v["signal"]
         w = v["target_weight"]
         pct = min(max(w / 0.25, 0.0), 1.0) * 100
+        # "Why isn't it trading?" -- show the price that would flip this
+        # asset and how far away it is.
+        trig, dist = v.get("trigger_price"), v.get("distance_pct")
+        if trig and dist is not None:
+            near = abs(dist) <= 0.03  # within 3%: worth watching today
+            trig_html = (
+                f"<div class='muted mono' style='font-size:11.5px;margin-top:6px'"
+                f"{' class=warnv' if near else ''}>{v.get('trigger_label','')} "
+                f"<b>${trig:,.2f}</b> "
+                f"<span class='{'warnv' if near else 'muted'}'>({dist:+.1%})</span></div>")
+        else:
+            trig_html = ("<div class='muted mono' style='font-size:11.5px;"
+                         "margin-top:6px'>warming up</div>")
         cards.append(
             f"<div class='scard'><div class='srow'><b>{sym}</b>"
             f"<span class='pill {'on' if on else 'off'}'>{'LONG' if on else 'FLAT'}</span></div>"
             f"<div class='muted mono'>${v['close']:,.2f}</div>"
             f"<div class='bar'><span style='width:{pct:.0f}%'></span></div>"
-            f"<div class='muted mono'>target {w:.1%}</div></div>"
+            f"<div class='muted mono'>target {w:.1%}</div>"
+            f"{trig_html}</div>"
         )
-    return "<div class='cards'>" + "".join(cards) + "</div>"
+    note = ("<p class='muted' style='font-size:12px;margin:.4rem 0 0'>"
+            "A flat book is normal: this is a breakout system that buys only "
+            "on new highs — the backtest averaged just ~8.5% gross exposure "
+            "and ~3 round trips a year. Each card shows the price that would "
+            "flip it.</p>")
+    return "<div class='cards'>" + "".join(cards) + "</div>" + note
 
 
 def _milkroad_panel(m: dict) -> str:

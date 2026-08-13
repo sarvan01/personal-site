@@ -11,6 +11,7 @@ import pandas as pd
 from .config import SystemConfig
 from .indicators import realized_vol
 from .regime import classify
+from .indicators import donchian_high, donchian_low
 from .risk import asset_weight, cap_gross
 from .strategy import stop_distance, trend_signal
 
@@ -39,12 +40,30 @@ def latest_targets(
         vol = float(realized_vol(df["close"], cfg.regime.vol_window).iloc[-1])
         price = float(df["close"].iloc[-1])
         weight = asset_weight(sig, vol, price, stop, cfg.risk) * mult
+
+        # Distance to the next state change: what price must be reached for
+        # this asset to flip. Answers "why isn't it trading?" at a glance --
+        # a flat book is normal for a breakout system (backtest average gross
+        # exposure was only ~8.5%), and this shows how far away action is.
+        upper = donchian_high(df["close"], lookback).iloc[-1]
+        lower = donchian_low(
+            df["close"], max(lookback // cfg.trend.exit_divisor, 2)).iloc[-1]
+        if sig:
+            trigger, label = lower, "exit below"
+        else:
+            trigger, label = upper, "entry above"
+        trigger = None if pd.isna(trigger) else float(trigger)
+        distance_pct = ((trigger / price - 1.0) if trigger and price > 0 else None)
+
         targets[sym] = {
             "signal": bool(sig),
             "close": price,
             "stop": stop,
             "vol": vol,
             "target_weight": weight,
+            "trigger_price": trigger,
+            "trigger_label": label,
+            "distance_pct": distance_pct,
         }
 
     # Portfolio gross cap -- the same layer-2 scaling the backtest applies,
