@@ -173,7 +173,9 @@ def main() -> int:
     # --- sleeve A signals (shared with the executor via latest_targets) ------
     targets_full, _ = latest_targets(ohlc, cfg, args.lookback, macro_risk_off=risk_off)
     signals = {
-        s: {"signal": v["signal"], "close": v["close"], "target_weight": v["target_weight"]}
+        s: {"signal": v["signal"], "close": v["close"], "target_weight": v["target_weight"],
+            "trigger_price": v["trigger_price"], "trigger_label": v["trigger_label"],
+            "distance_pct": v["distance_pct"]}
         for s, v in targets_full.items()
     }
 

@@ -86,3 +86,30 @@ def test_cockpit_handles_missing_trigger_fields(tmp_path):
         data_mode="synthetic", out_dir=tmp_path,
     )
     assert "warming up" in path.read_text(encoding="utf-8")
+
+
+def test_main_thread_preserves_trigger_fields_into_signals(tmp_path, monkeypatch):
+    """Regression test: main() used to narrow targets_full -> signals down to
+    {signal, close, target_weight} before handing it to build_cockpit, silently
+    dropping trigger_price/trigger_label/distance_pct on every real run (while
+    unit tests on latest_targets()/build_cockpit() in isolation stayed green).
+    That made every signal card show 'warming up' regardless of how much
+    history was available.
+    """
+    import sys
+    from pathlib import Path
+
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+    import cockpit as cockpit_script
+    from trading_system.paper import PaperAccount
+
+    monkeypatch.setattr(
+        cockpit_script, "PaperAccount",
+        lambda: PaperAccount(path=tmp_path / "paper_ledger.json"))
+    monkeypatch.setattr(sys, "argv", ["cockpit.py", "--synthetic", "--replay", "5"])
+
+    rc = cockpit_script.main()
+    assert rc == 0
+
+    html = (cockpit_script.ROOT / "out" / "cockpit.html").read_text(encoding="utf-8")
+    assert html.count("warming up") == 0
