@@ -1,0 +1,30 @@
+[
+  {
+    "id": "H1",
+    "claim": "Donchian trend-following on BTC/ETH is profitable net of 25bps/side across the 50/100/200 lookback grid (Sharpe>0.7, maxDD<35%)",
+    "test": "scripts/run_backtest.py on real Binance data 2017-present, walk-forward",
+    "result": "FAIL as registered (2026-06-12, 3220 days). Sharpe by lookback: 50d=1.12, 100d=1.03, 200d=0.597 \u2014 gate failed only on the 200d leg. All returns positive (27%/25%/13% total), maxDD < 6%. Walk-forward: 3 of 4 two-year windows strongly positive (Sharpe 1.2-2.1); only 2021-23 negative (-1.6%, the bear/chop). Avg gross exposure 2.5% \u2014 the 0.5% per-trade risk cap against a 3xATR stop binds ~5x below the vol target, leaving capital idle.",
+    "decision": "Retired as registered. No live capital under H1. Superseded by the explicitly post-hoc H1b with a stricter confirmation bar."
+  },
+  {
+    "id": "H1b",
+    "claim": "POST-HOC (formed after seeing H1 results - confirmation bar is stricter for that reason): 50/100-day trend on an expanded liquid-major universe (BTC, ETH, BNB, XRP, SOL) passes the same gate, with sizing reconciled (per-trade risk 1.0%) so the vol target governs",
+    "test": "scripts/run_backtest.py --config h1b (expanded universe is partial fresh evidence: BNB/XRP/SOL were not used to form the hypothesis). Then 4 clean paper weeks (scripts/cockpit.py --config h1b daily). Any live deployment starts at 10% of target size. Known caveat: universe chosen today = survivorship risk; mitigated by using only majors that passed liquidity screens for most of the sample.",
+    "result": "GATE PASS (2026-06-12, real data, 3220 days, 5 majors): Sharpe 50d=1.257, 100d=1.097; total return 152%/122% (CAGR ~11%/9.5%); ann vol 8.6%; maxDD -14.6%/-14.3%; avg gross exposure 8.6%; turnover 3.4/2.7 per yr. Walk-forward: 3 of 4 windows positive (Sharpe 0.97-1.30), 2021-23 negative (-7.3%) as expected for the strategy class.",
+    "decision": "Gate stage cleared. Post-hoc bar still applies: 4 clean paper weeks (cockpit.py --config h1b daily) before any capital, then live at 10% of target size. Survivorship caveat on universe stands."
+  },
+  {
+    "id": "H2",
+    "claim": "Privacy assets outperform during uncertainty (Railgun hypothesis)",
+    "test": "Run: python scripts/fetch_privacy.py (CoinGecko: XMR/ZEC/SCRT/RAIL/DASH) then python scripts/cockpit.py. Beta-adjusted event study vs pre-registered research/privacy_events.csv: CAR windows, 10k-permutation p<0.05, drop-one robustness (trading_system/event_study.py).",
+    "result": "CLOSED 2026-06-13 \u2014 REJECTED by all three tests. U3 event study (8 events, beta-adjusted): [0,+5] CAR -1.49%, p=0.761 -> no effect. U2 crypto-stress regime: privacy UNDERPERFORMS -0.50%/day, p=0.995 (in=1217/out=1637). U1 macro risk-off (VIX>25, CBOE history): privacy UNDERPERFORMS -0.63%/day, p=0.996 (in=429/out=2425). The thesis is not just unsupported but directionally BACKWARDS: privacy coins (high-beta) sell off harder in uncertainty. Matches the ~55% confounded-artifact prior; the original observation was recency bias around the 2025 ZEC rally.",
+    "decision": "REJECT and close H2. No capital, ever, on this thesis. The two surviving edges are H1b (trend) and H3 (carry), both in paper trading."
+  },
+  {
+    "id": "H3",
+    "claim": "Funding carry above a 10% annualized hurdle is collectable net of 4-side costs",
+    "test": "carry.backtest_carry on real funding history",
+    "result": "PASS (2026-06-12, BTCUSDT funding 2020-present): +7.3%/yr net on sleeve capital (10.1% gross), 45.6% time in market (~16%/yr while deployed), 18 round trips. Costs modeled at the pessimistic 25bps/side x 4 sides.",
+    "decision": "Proceed to paper trading. Sleeve cap 30% of account, >=3x maintenance margin buffer. Currently OUT (funding below hurdle) - correct behavior, it waits."
+  }
+]

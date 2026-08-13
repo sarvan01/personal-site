@@ -1,0 +1,10 @@
+{
+  "url": "PASTE the JSON endpoint URL for Trades -> Analyst Trade Log (found via DevTools)",
+  "records_path": "data",
+  "date_path": "date",
+  "analyst_path": "analyst",
+  "action_path": "type",
+  "asset_path": "asset",
+  "note_path": "rationale",
+  "perf_path": "performancePercent"
+}

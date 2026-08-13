@@ -1,0 +1,347 @@
+{
+  "regime": {
+    "state": "chop",
+    "exposure_multiplier": 0.5,
+    "macro_composite": "active",
+    "as_of": "2025-01-08"
+  },
+  "signals": {
+    "BTCUSDT": {
+      "signal": false,
+      "close": 522.9274734000105,
+      "target_weight": 0.0
+    },
+    "ETHUSDT": {
+      "signal": false,
+      "close": 117118.74216355481,
+      "target_weight": 0.0
+    }
+  },
+  "carry": {
+    "trailing_7d_funding_annualized": 0.1494987724023805,
+    "signal": "IN",
+    "enter_hurdle": 0.1,
+    "exit_hurdle": 0.05,
+    "max_sleeve_weight": 0.3
+  },
+  "risk": {
+    "per_trade_risk": 0.01,
+    "max_asset_weight": 0.25,
+    "max_gross": 1.0,
+    "target_vol": 0.12,
+    "circuit_breakers": "-10% half / -15% flat"
+  },
+  "paper": {
+    "equity": 97314.86,
+    "peak_equity": 102236.49,
+    "drawdown": -0.0481,
+    "open_weights": {},
+    "days_recorded": 60,
+    "breaker_cooldown_left": 0
+  },
+  "backtest_gate": "FAIL",
+  "data_mode": "synthetic",
+  "stale_data_warnings": [],
+  "equity_history": [
+    99947.92,
+    99816.02,
+    99480.72,
+    99287.36,
+    99234.13,
+    99429.32,
+    99591.09,
+    99931.75,
+    99763.08,
+    99953.21,
+    100386.31,
+    100632.7,
+    100981.55,
+    101997.94,
+    102236.49,
+    102210.16,
+    101886.91,
+    101180.92,
+    100633.4,
+    100318.03,
+    100019.35,
+    100659.55,
+    100643.01,
+    99653.13,
+    99737.15,
+    100474.81,
+    100135.91,
+    99939.32,
+    99525.07,
+    98976.88,
+    99153.81,
+    98852.18,
+    98400.68,
+    97925.38,
+    97716.46,
+    97506.15,
+    97546.97,
+    98004.22,
+    98152.05,
+    98076.62,
+    97664.55,
+    97314.86,
+    97314.86,
+    97314.86,
+    97314.86,
+    97314.86,
+    97314.86,
+    97314.86,
+    97314.86,
+    97314.86,
+    97314.86,
+    97314.86,
+    97314.86,
+    97314.86,
+    97314.86,
+    97314.86,
+    97314.86,
+    97314.86,
+    97314.86,
+    97314.86
+  ],
+  "backtest": {
+    "pass": false,
+    "grid": [
+      {
+        "lookback": 50,
+        "total_return": 0.252,
+        "cagr": 0.038,
+        "ann_vol": 0.044,
+        "sharpe": 0.87,
+        "max_drawdown": -0.053,
+        "avg_gross_exposure": 0.053,
+        "ann_turnover": 1.82,
+        "days": 2200
+      },
+      {
+        "lookback": 100,
+        "total_return": 0.199,
+        "cagr": 0.031,
+        "ann_vol": 0.046,
+        "sharpe": 0.677,
+        "max_drawdown": -0.079,
+        "avg_gross_exposure": 0.058,
+        "ann_turnover": 1.803,
+        "days": 2200
+      }
+    ],
+    "walk_forward": [
+      {
+        "from": "2019-01-01",
+        "to": "2020-12-30",
+        "total_return": -0.038,
+        "sharpe": -0.548,
+        "max_drawdown": -0.065
+      },
+      {
+        "from": "2020-12-31",
+        "to": "2022-12-30",
+        "total_return": 0.055,
+        "sharpe": 0.635,
+        "max_drawdown": -0.045
+      },
+      {
+        "from": "2022-12-31",
+        "to": "2024-12-29",
+        "total_return": 0.108,
+        "sharpe": 1.055,
+        "max_drawdown": -0.052
+      }
+    ]
+  },
+  "event_study": {
+    "windows": {
+      "[-5,0]": {
+        "mean_car": 0.03589161850808038,
+        "p_value": 0.14142928535732133,
+        "n_events": 8
+      },
+      "[0,5]": {
+        "mean_car": -0.014780461875874703,
+        "p_value": 0.928535732133933,
+        "n_events": 8
+      },
+      "[0,20]": {
+        "mean_car": 0.02295088547911218,
+        "p_value": 0.7626186906546727,
+        "n_events": 8
+      }
+    },
+    "drop_one": {
+      "[-5,0]": [
+        0.047324331205722374,
+        0.03457461580726588,
+        0.046021028902086966,
+        0.042105914616740125,
+        0.03206304729736503,
+        0.03209631462350543,
+        0.027820174117655083,
+        0.025127521494302228
+      ],
+      "[0,5]": [
+        -0.008668177123936641,
+        -0.013962578134876088,
+        -0.028918958247075605,
+        -0.008200421982088497,
+        -0.016418867180526032,
+        -0.009755413677995371,
+        -0.020520006981650955,
+        -0.011799271678848438
+      ],
+      "[0,20]": [
+        0.01113556071965423,
+        0.018990808361002805,
+        0.008237124775096296,
+        0.022545638343244915,
+        0.035767789408581926,
+        0.04768638404229342,
+        -0.009044588784222941,
+        0.048288366967246844
+      ]
+    },
+    "verdict": "No significant beta-adjusted effect. Consistent with the prior (~55% confounded artifact). Do not trade; archive the result.",
+    "p_threshold": 0.05
+  },
+  "regime_tests": [
+    {
+      "test": "U2",
+      "regime": "BTC crypto-stress (top-quintile 30d vol or >20% drawdown)",
+      "in_regime_mean_daily": 0.003273716472805819,
+      "out_regime_mean_daily": 0.001877389410994934,
+      "diff": 0.0013963270618108851,
+      "p_value": 0.16941529235382308,
+      "n_in": 444,
+      "n_out": 665,
+      "verdict": "U2: positive but NOT significant (+0.140%/day, p=0.169). No edge."
+    },
+    {
+      "test": "U1",
+      "regime": "Macro risk-off (VIX > 25)",
+      "in_regime_mean_daily": 0.002594361472795916,
+      "out_regime_mean_daily": 0.0023941868429750517,
+      "diff": 0.0002001746298208643,
+      "p_value": 0.44427786106946526,
+      "n_in": 234,
+      "n_out": 875,
+      "verdict": "U1: positive but NOT significant (+0.020%/day, p=0.444). No edge."
+    }
+  ],
+  "milkroad": {
+    "updated_utc": "sample",
+    "source": "sample",
+    "indicators": {
+      "macro_index": {
+        "value": 0.29,
+        "label": "Risk On",
+        "as_of": "2026-07-02",
+        "min": -3,
+        "max": 3
+      },
+      "macro_pulse": {
+        "value": 54,
+        "label": "Neutral+",
+        "as_of": "2026-06-13"
+      },
+      "crypto_pulse": {
+        "value": 71,
+        "label": "Greed",
+        "as_of": "2026-06-13"
+      },
+      "fear_greed": {
+        "value": 19,
+        "label": "Extreme Fear",
+        "as_of": "2026-07-02"
+      }
+    },
+    "trades": [
+      {
+        "date": "2026-06-12",
+        "action": "BUY",
+        "asset": "SOL",
+        "note": "adding to core position",
+        "source": "discord"
+      },
+      {
+        "date": "2026-06-11",
+        "action": "HOLD",
+        "asset": "BTC",
+        "note": "",
+        "source": "discord"
+      },
+      {
+        "date": "2026-06-09",
+        "action": "WATCH",
+        "asset": "LINK",
+        "note": "waiting for reclaim of range",
+        "source": "discord"
+      }
+    ]
+  },
+  "stress": {
+    "config": "h1b",
+    "data_mode": "synthetic",
+    "base": {
+      "total_return": 0.408,
+      "cagr": 0.0868,
+      "sharpe": 1.1969,
+      "max_drawdown": -0.1002,
+      "ann_vol": 0.0718
+    },
+    "flash_crash": {
+      "scenario": "every symbol -40% in one day",
+      "portfolio_loss_on_crash_day": -0.0202,
+      "worst_single_day_in_series": -0.0202,
+      "gross_exposure_going_in": 0.0505,
+      "note": "loss is bounded by gross exposure going into the crash; the -15% breaker then flattens the book on the next bar",
+      "base_final_equity": 140800.16,
+      "stressed_final_equity": 137955.98
+    },
+    "worst_year": {
+      "scenario": "worst rolling 365-day window in sample",
+      "window": "2022-01-27 -> 2023-01-27",
+      "net_return": -0.0324,
+      "note": "this is what the bad regime felt like; expect it again"
+    },
+    "ragged_data": {
+      "scenario": "5 random missing bars in SOLUSDT",
+      "pipeline_survived": true,
+      "metrics_finite": true,
+      "total_return": 0.3734,
+      "cagr": 0.0803,
+      "sharpe": 1.1199,
+      "max_drawdown": -0.1049,
+      "ann_vol": 0.0713
+    },
+    "monte_carlo": {
+      "n_paths": 2000,
+      "horizon_days": 365,
+      "block_days": 20,
+      "return_1y": {
+        "p5": -0.04678977338286972,
+        "p25": 0.0324665915644623,
+        "p50": 0.08574778970094554,
+        "p75": 0.1435706287074811,
+        "p95": 0.22772060093416607
+      },
+      "max_drawdown_1y": {
+        "p5": -0.11562400279837981,
+        "p50": -0.05399285198382053,
+        "p95": -0.02609519524295618
+      },
+      "prob_positive_year": 0.858,
+      "prob_dd_exceeds_10pct": 0.096,
+      "prob_dd_exceeds_15pct": 0.01,
+      "caveat": "bootstrap of observed history; cannot simulate regimes worse than the worst sampled block -- tails are optimistic"
+    }
+  },
+  "generated_utc": "2026-07-06 21:38 UTC",
+  "decision": {
+    "stage": "DEMO",
+    "line": "NO-GO (synthetic data is never decision-grade)"
+  }
+}
