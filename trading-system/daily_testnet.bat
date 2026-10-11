@@ -25,9 +25,12 @@ if "%BINANCE_KEY%"=="" (
 call daily.bat
 if errorlevel 1 goto :err
 
+call find_python.bat
+if errorlevel 1 goto :err
+
 echo.
 echo [3/3] Placing today's orders on TESTNET (play money)...
-python scripts\execute.py --config h1b --venue testnet --execute
+%PY% scripts\execute.py --config h1b --venue testnet --execute
 if errorlevel 1 (
   echo Testnet execution reported a problem -- see above. The paper run
   echo above still completed; fix the testnet issue and re-run this file.

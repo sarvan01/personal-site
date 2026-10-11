@@ -9,6 +9,11 @@ which is hard-gated.
 basket, builds the cockpit, and opens it. (It does not touch an existing paper
 ledger.)
 
+If `python --version` says "Python was not found" but `py --version` works
+(common with the Windows Python install manager), type `py` wherever this
+runbook says `python` — e.g. `py -m pip install -r requirements.txt`. The
+`.bat` files detect this and fall back to `py` automatically.
+
 Or by hand:
 
 ```powershell
