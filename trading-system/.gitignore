@@ -1,0 +1,13 @@
+# cached market data and generated dashboards
+data/
+out/
+__pycache__/
+.pytest_cache/
+
+# personal Milk Road endpoint/login config (not secrets themselves, but
+# personal/site-specific -- and never put a password IN these files, only
+# endpoint URLs and field names; the login script prompts for credentials
+# at runtime instead)
+scripts/feeds/milkroad_endpoints.json
+scripts/feeds/milkroad_login_config.json
+scripts/feeds/milkroad_trades_config.json

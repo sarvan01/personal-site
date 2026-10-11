@@ -1,0 +1,17 @@
+{
+  "macro_index": {
+    "url": "PASTE the JSON endpoint URL you found in DevTools for milkroad.com/data/macro-index/",
+    "value_path": "data.score",
+    "label_path": "data.label"
+  },
+  "macro_pulse": {
+    "url": "PASTE the JSON endpoint URL you found in DevTools for milkroad.com/data/macro-pulse/",
+    "value_path": "data.score",
+    "label_path": "data.label"
+  },
+  "crypto_pulse": {
+    "url": "PASTE the JSON endpoint URL you found in DevTools for milkroad.com/data/crypto-pulse/",
+    "value_path": "data.score",
+    "label_path": "data.label"
+  }
+}
