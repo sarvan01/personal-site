@@ -48,9 +48,17 @@ def main() -> int:
                         help="second gate required for --venue live")
     parser.add_argument("--execute", action="store_true",
                         help="actually place orders (default is preview only)")
+    parser.add_argument("--capital", type=float, default=None,
+                        help="size as if the account held at most this many USDT "
+                        "(required for --venue live)")
     args = parser.parse_args()
     cfg = CONFIGS[args.config]
     venue = Venue(args.venue)
+    if venue == Venue.LIVE and args.capital is None:
+        print("BLOCKED: --venue live requires --capital <USDT> -- the most the "
+              "system may trade with (start at 10% of your intended size)",
+              file=sys.stderr)
+        return 3
 
     try:
         ohlc = {sym: load_klines(sym) for sym in cfg.universe}
@@ -75,11 +83,14 @@ def main() -> int:
     print(f"venue={venue.value} config={args.config} regime={regime['state']} "
           f"breaker_scale={scale} as_of={regime['as_of']}")
     print("target weights:", {s: round(w, 4) for s, w in targets.items()})
+    if args.capital is not None:
+        print(f"capital cap: sizing against at most ${args.capital:,.2f}")
 
     try:
         broker = make_broker(venue, prices=prices,
                              i_understand_live=args.i_understand_live)
-        executor = Executor(broker=broker, risk=cfg.risk, breaker_scale=scale)
+        executor = Executor(broker=broker, risk=cfg.risk, breaker_scale=scale,
+                            capital_cap=args.capital)
         preview = not args.execute
         record = executor.execute(targets, dry_preview=(preview and venue != Venue.DRY))
     except ExecutionError as exc:

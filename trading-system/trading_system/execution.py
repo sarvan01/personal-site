@@ -322,6 +322,9 @@ class Executor:
     risk: RiskConfig
     rebalance_band: float = 0.01  # ignore weight drifts smaller than 1% of equity
     breaker_scale: float = 1.0  # pass the circuit-breaker scale from the daily run
+    # Size as if the account held at most this many USDT. Enforces "live at
+    # 10% size" in code instead of trusting how much sits in the account.
+    capital_cap: float | None = None
     log_path: Path = field(default=EXECUTION_LOG)
 
     def pre_trade_checks(self, targets: dict[str, float]) -> None:
@@ -366,6 +369,10 @@ class Executor:
         equity = self.broker.equity(relevant_bases=bases)
         if equity <= 0:
             raise ExecutionError("non-positive equity; refusing to trade")
+        if self.capital_cap is not None:
+            if self.capital_cap <= 0:
+                raise ExecutionError("capital cap must be positive")
+            equity = min(equity, self.capital_cap)
         holdings = self.broker.holdings()
         plans: list[OrderPlan] = []
         for sym, target_w in scaled.items():

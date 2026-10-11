@@ -91,10 +91,15 @@ Order execution is built and risk-checked but **off by default**. Path:
 3. **Live (real money) — two independent gates:**
    ```powershell
    setx ALLOW_LIVE_TRADING yes
-   python scripts/execute.py --config h1b --venue live --i-understand-live --execute
+   python scripts/execute.py --config h1b --venue live --i-understand-live --capital 1000
+   python scripts/execute.py --config h1b --venue live --i-understand-live --capital 1000 --execute
    ```
-   Start at 10% of target size. Every order is checked against the risk
-   policy and scaled by the circuit breaker before it is sent.
+   `--capital` is required for live: the system sizes as if the account held
+   at most that many USDT. Set it to 10% of your intended size. Use a
+   dedicated (sub-)account: the system treats any BTC/ETH/BNB/XRP/SOL it
+   finds as its own position and will sell it down to target. Every order is
+   checked against the risk policy and scaled by the circuit breaker before
+   it is sent.
 
 ## Archived research — Railgun / privacy (H2, CLOSED)
 
