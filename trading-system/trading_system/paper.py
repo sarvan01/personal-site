@@ -182,7 +182,19 @@ class PaperAccount:
             assumed = out["assumed_cost_bps_per_side"] or 1e-9
             out["observed_vs_assumed_ratio"] = avg / assumed
             # Kill criterion input (report section 5): live costs > 1.5x assumed.
-            out["within_kill_criterion"] = avg <= 1.5 * assumed
+            # Once real-money fills exist, judge on those alone: near-free
+            # testnet fills would otherwise dilute the average and hide
+            # expensive live execution for dozens of trades.
+            live = [f["observed_cost_bps_per_side"] for f in fills
+                    if f.get("source") == "live"
+                    and f["observed_cost_bps_per_side"] is not None]
+            out["n_live_observed"] = len(live)
+            if live:
+                live_avg = sum(live) / len(live)
+                out["avg_live_cost_bps_per_side"] = live_avg
+                out["within_kill_criterion"] = live_avg <= 1.5 * assumed
+            else:
+                out["within_kill_criterion"] = avg <= 1.5 * assumed
         return out
 
     def summary(self) -> dict:

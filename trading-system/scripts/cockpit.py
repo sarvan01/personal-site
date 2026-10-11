@@ -287,6 +287,7 @@ def main() -> int:
         f"- Pre-registered backtest gate: {'PASS' if gate else 'FAIL'}",
         f"- Paper-trading days recorded: {len(equity_history)} (need >= 20 clean days)",
         f"- Testnet/live fills with observed costs: {recon['n_with_observed_costs']}",
+        f"- Of which LIVE (judged alone once present): {recon.get('n_live_observed', 0)}",
         f"- Observed costs within 1.5x of assumptions: "
         f"{recon.get('within_kill_criterion', 'n/a (no observed fills yet)')}",
         "",

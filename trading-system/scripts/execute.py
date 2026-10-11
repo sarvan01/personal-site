@@ -80,6 +80,15 @@ def main() -> int:
     elif dd <= -cfg.risk.dd_half_size:
         scale = 0.5
 
+    if venue == Venue.LIVE:
+        recon = account.reconciliation()
+        if recon.get("n_live_observed", 0) and not recon.get("within_kill_criterion"):
+            print(f"BLOCKED: live costs average "
+                  f"{recon['avg_live_cost_bps_per_side']:.1f} bps/side, above 1.5x the "
+                  f"assumed {recon['assumed_cost_bps_per_side']:.0f} -- kill criterion. "
+                  "Diagnose slippage before trading live again.", file=sys.stderr)
+            return 3
+
     print(f"venue={venue.value} config={args.config} regime={regime['state']} "
           f"breaker_scale={scale} as_of={regime['as_of']}")
     print("target weights:", {s: round(w, 4) for s, w in targets.items()})
